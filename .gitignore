@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2022-present Open Networking Foundation <info@opennetworking.org>
+# SPDX-FileCopyrightText: 2022-present Intel Corporation
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -13,3 +18,13 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+.idea
+build/build-tools
+
+# Jenkins report files
+*report*.xml
+*coverage*.xml
+*-output.out
+
+

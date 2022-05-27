@@ -16,8 +16,12 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Built artifacts
+build/_output/*
+**/_output
+
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
 
 .idea
 build/build-tools

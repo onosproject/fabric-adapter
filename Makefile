@@ -15,7 +15,7 @@ VERSION                     ?= $(shell cat ./VERSION)
 
 KIND_CLUSTER_NAME           ?= kind
 DOCKER_REPOSITORY           ?= onosproject/
-ONOS_FABRIC_ADAPTER_VERSION ?= latest
+FABRIC_ADAPTER_VERSION      ?= latest
 LOCAL_AETHER_MODELS         ?=
 
 ## Docker labels. Only set ref and commit date if committed
@@ -45,31 +45,24 @@ images: fabric-adapter-docker
 
 # @HELP build the adapter
 build:
+	go build -o build/_output/fabric-adapter ./cmd/fabric-adapter
 
 # @HELP run various tests
 test: build unit-test deps license linters images
 
 # @HELP run init tests
 unit-test:
-	@echo no tests yet
-	# go test -cover -race github.com/onosproject/fabric-adapter/pkg/...
-	# go test -cover -race github.com/onosproject/fabric-adapter/cmd/...
-
-deps: # remove me when there is go code here
-	@echo No deps yet
-
-linters: # remove me when there is go code here
-	@echo no code to lint
+	go test -cover -race github.com/onosproject/fabric-adapter/pkg/...
+	go test -cover -race github.com/onosproject/fabric-adapter/cmd/...
 
 jenkins-test:  # @HELP run the unit tests and source code validation producing a junit style report for Jenkins
 jenkins-test: build deps license linters images jenkins-tools
-	@echo no tests yet
-	# TEST_PACKAGES=`go list github.com/onosproject/fabric-adapter/...` ./build/build-tools/build/jenkins/make-unit
+	TEST_PACKAGES=`go list github.com/onosproject/fabric-adapter/...` ./build/build-tools/build/jenkins/make-unit
 
 fabric-adapter-docker:
-#	docker build . -f Dockerfile \
-#	$(DOCKER_BUILD_ARGS) \
-#	-t ${DOCKER_REPOSITORY}fabric-adapter:${ONOS_FABRIC_ADAPTER_VERSION}
+	docker build . -f Dockerfile \
+	$(DOCKER_BUILD_ARGS) \
+	-t ${DOCKER_REPOSITORY}fabric-adapter:${FABRIC_ADAPTER_VERSION}
 
 kind: # @HELP build Docker images and add them to the currently configured kind cluster
 kind: images kind-only
@@ -77,7 +70,7 @@ kind: images kind-only
 kind-only: # @HELP deploy the image without rebuilding first
 kind-only:
 	@if [ "`kind get clusters`" = '' ]; then echo "no kind cluster found" && exit 1; fi
-	kind load docker-image --name ${KIND_CLUSTER_NAME} ${DOCKER_REPOSITORY}fabric-adapter:${ONOS_FABRIC_ADAPTER_VERSION}
+	kind load docker-image --name ${KIND_CLUSTER_NAME} ${DOCKER_REPOSITORY}fabric-adapter:${FABRIC_ADAPTER_VERSION}
 
 publish: # @HELP publish version on github and dockerhub
 	./build/build-tools/publish-version ${VERSION} onosproject/fabric-adapter

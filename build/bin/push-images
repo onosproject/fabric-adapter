@@ -6,4 +6,4 @@
 
 echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USER" --password-stdin
 make images
-docker push onosproject/sdcore-adapter:latest
+docker push onosproject/fabric-adapter:latest

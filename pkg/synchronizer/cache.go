@@ -13,14 +13,8 @@ import (
 )
 
 const (
-	// CacheModelSlice is the modelName to use when caching slices to the core
-	CacheModelSlice = "slice"
-
-	// CacheModelSliceUpf is the modelName to use when caching slices to the UPF
-	CacheModelSliceUpf = "slice-upf"
-
-	// CacheModelDeviceGroup is the modelName to use when caching device-groups to the core
-	CacheModelDeviceGroup = "devicegroup"
+	// CacheModelNetConfig is the modelName to use when caching fabric to the onos
+	CacheModelNetConfig = "netconfig"
 )
 
 // CacheCheck returns true if (modelName, modelId) exists in the cache and the contents have not

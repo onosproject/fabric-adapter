@@ -7,7 +7,9 @@
 package synchronizer
 
 import (
+	"crypto/sha1"
 	"fmt"
+	"net"
 )
 
 // BoolToUint32 convert a boolean to an unsigned integer
@@ -100,4 +102,38 @@ func aUint32(u uint32) *uint32 {
 // aUint64 facilitates easy declaring of pointers to uint64
 func aUint64(u uint64) *uint64 {
 	return &u
+}
+
+// cageChannelToPort convergs a cage and channel to a single port integer
+func cageChannelToPort(cage *uint8, channel *uint8) uint16 {
+	if cage == nil {
+		return uint16(*channel)
+	}
+	return uint16(*channel)*100 + uint16(*cage)
+}
+
+func switchCageChannelToDeviceId(sw *Switch, cage *uint8, channel *uint8) string {
+	port := cageChannelToPort(cage, channel)
+	return fmt.Sprintf("device:%s/%d", *sw.SwitchId, port)
+}
+
+func addressToMac(address string) (string, error) {
+	ip := net.ParseIP(address)
+	if ip == nil {
+		return "", fmt.Errorf("%s is not a valid IP address", address)
+	}
+	if len(ip) == 16 {
+		return fmt.Sprintf("%02X:%02X:%02X:%02X:%02X:%02X", 0, 0, ip[12], ip[13], ip[14], ip[15]), nil
+	} else {
+		return fmt.Sprintf("%02X:%02X:%02X:%02X:%02X:%02X", 0, 0, ip[0], ip[1], ip[2], ip[3]), nil
+	}
+}
+
+func addressToSid(address string) uint32 {
+	h := sha1.New()
+	h.Write([]byte(address))
+	hashBytes := h.Sum(nil)
+
+	// 20-bit number that is greater than 16
+	return ((uint32(hashBytes[1]<<16) + uint32(hashBytes[1]<<8) + uint32(hashBytes[2]) + 17) & 0x0FFFFF)
 }

@@ -33,6 +33,8 @@ type Synchronizer struct {
 	retryInterval       time.Duration
 	partialUpdateEnable bool
 
+	sidUsed map[uint32]bool // list of sids that have been used
+
 	// Busy indicator, primarily used for unit testing. The channel length in and of itself
 	// is not sufficient, as it does not include the potential update that is currently syncing.
 	// >0 if the synchronizer has operations pending and/or in-progress
@@ -65,6 +67,11 @@ type SynchronizerOption func(c *Synchronizer) // nolint
 // tree. Contexts were considered for this implementation, but rejected due to the lack of
 // static checking.
 type FabricScope struct {
-	FabricId *string     // nolint - use EnterpriseId to match the ygot naming convention
-	Fabric   *RootDevice // Each enterprise is a configuration tree
+	FabricId        *string      // nolint - use EnterpriseId to match the ygot naming convention
+	Fabric          *RootDevice  // Each fabric is a configuration tree
+	Switch          *Switch      // The switch we're currently working on
+	SwitchModel     *SwitchModel // The switch model we're currently working on
+	OnosEndpoint    *string      // Endpoint of Onos to post to
+	StratumEndpoint *string      // Endpoint of Fabric to post to
+	NetConfig       *OnosNetConfig
 }

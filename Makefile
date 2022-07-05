@@ -89,7 +89,7 @@ docker-push-latest: docker-login
 publish: # @HELP publish version on github and dockerhub
 	./build/build-tools/publish-version ${VERSION} onosproject/fabric-adapter
 
-jenkins-publish: docker-push-latest # @HELP Jenkins calls this to publish artifacts
+jenkins-publish: images docker-push-latest # @HELP Jenkins calls this to publish artifacts
 	./build/build-tools/release-merge-commit
 
 clean:: # @HELP remove all the build artifacts

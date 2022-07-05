@@ -15,6 +15,7 @@ VERSION                     ?= $(shell cat ./VERSION)
 
 KIND_CLUSTER_NAME           ?= kind
 DOCKER_REPOSITORY           ?= onosproject/
+FABRIC_ADAPTER_IMAGE_NAME   ?= fabric-adapter
 FABRIC_ADAPTER_VERSION      ?= latest
 LOCAL_AETHER_MODELS         ?=
 
@@ -37,7 +38,7 @@ DOCKER_BUILD_ARGS ?= \
 
 all: build images
 
-build-tools:=$(shell if [ ! -d "./build/build-tools" ]; then cd build && git clone https://github.com/onosproject/build-tools.git; fi)
+build-tools:=$(shell if [ ! -d "./build/build-tools" ]; then mkdir -p build && cd build && git clone https://github.com/onosproject/build-tools.git; fi)
 include ./build/build-tools/make/onf-common.mk
 
 images: # @HELP build simulators image
@@ -72,11 +73,23 @@ kind-only:
 	@if [ "`kind get clusters`" = '' ]; then echo "no kind cluster found" && exit 1; fi
 	kind load docker-image --name ${KIND_CLUSTER_NAME} ${DOCKER_REPOSITORY}fabric-adapter:${FABRIC_ADAPTER_VERSION}
 
+docker-login:
+ifdef DOCKER_USER
+ifdef DOCKER_PASSWORD
+	echo ${DOCKER_PASSWORD} | docker login -u ${DOCKER_USER} --password-stdin
+else
+	@echo "DOCKER_USER is specified but DOCKER_PASSWORD is missing"
+	@exit 1
+endif
+endif
+
+docker-push-latest: docker-login
+	docker push onosproject/$(FABRIC_ADAPTER_IMAGE_NAME):latest
+
 publish: # @HELP publish version on github and dockerhub
 	./build/build-tools/publish-version ${VERSION} onosproject/fabric-adapter
 
-jenkins-publish: # @HELP Jenkins calls this to publish artifacts
-	./build/bin/push-images
+jenkins-publish: docker-push-latest # @HELP Jenkins calls this to publish artifacts
 	./build/build-tools/release-merge-commit
 
 clean:: # @HELP remove all the build artifacts

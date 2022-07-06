@@ -112,6 +112,8 @@ github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbt
 github.com/PuerkitoBio/urlesc v0.0.0-20160726150825-5bd2802263f2/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/SeanCondon/xpath v0.0.0-20220225125014-419de017925c/go.mod h1:Eq2Xc+fS1NsmRIB3orQMESBU3JZ1koIwYycgDgtYqZo=
+github.com/SeanCondon/xpath v0.0.0-20220628084621-97cfdefbc266 h1:qV0bAUuXmUJn2IstWDqteJz649PhDDA5R5HKpL3ENGA=
+github.com/SeanCondon/xpath v0.0.0-20220628084621-97cfdefbc266/go.mod h1:Eq2Xc+fS1NsmRIB3orQMESBU3JZ1koIwYycgDgtYqZo=
 github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d/go.mod h1:HI8ITrYtUY+O+ZhtlqUnD8+KwNPOyugEhfP9fdUIaEQ=
 github.com/Shopify/sarama v1.29.1/go.mod h1:mdtqvCSg8JOxk8PmpTNGyo6wzd4BMm4QXSfDnTXmgkE=
 github.com/Shopify/sarama v1.31.1 h1:uxwJ+p4isb52RyV83MCJD8v2wJ/HBxEGMmG/8+sEzG0=
@@ -655,7 +657,6 @@ github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.2.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
 github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+vpHVxEJEs9eg=
 github.com/googleapis/gax-go/v2 v2.0.5/go.mod h1:DWXyrwAJ9X0FpwwEdw+IPEYBICEFu5mhpdKc/us6bOk=
@@ -917,12 +918,12 @@ github.com/onosproject/analytics/pkg/kafkaClient v0.0.0-20220503194729-1cd33b3a8
 github.com/onosproject/analytics/pkg/messages v0.0.0-20220503194729-1cd33b3a8dc8/go.mod h1:eon4ovhXMjMF4GExnw/f2KuILuEn2OzgLJjzYg4S5qc=
 github.com/onosproject/config-models v0.9.20/go.mod h1:7SwH/WcftMZ6FLEmf4B1BDdx7xJH6DA/OZcBb9J31XE=
 github.com/onosproject/config-models v0.9.24/go.mod h1:7SwH/WcftMZ6FLEmf4B1BDdx7xJH6DA/OZcBb9J31XE=
-github.com/onosproject/config-models v0.10.16 h1:Cat1VFz0uBO5vSr7+FUFaXew0XUIGozNcIMx+Ls8bbg=
-github.com/onosproject/config-models v0.10.16/go.mod h1:RfLQAkEGYAlvgfpJTt3F3nPbfHF9+eMXaPHRA4R82cc=
+github.com/onosproject/config-models v0.10.23 h1:WLXNcSKjOZzFts0yjN313iLGM+DA+Vy4EMayP/G6FS4=
+github.com/onosproject/config-models v0.10.23/go.mod h1:8yjqQ1UQDnw2cgJlJWPmu6iHetNZLeZpXcHc9P2Ut0E=
 github.com/onosproject/config-models/modelplugin/testdevice-2.0.0 v0.8.8 h1:sPeOWnYPDK0nIC7QnjOdJS/U+OAtxc5ulDW0ZbCJVMs=
 github.com/onosproject/config-models/modelplugin/testdevice-2.0.0 v0.8.8/go.mod h1:znr5lX3YnyyNstMb0D1fHH0yjMpJ3tu9LP9+qr6puMI=
-github.com/onosproject/config-models/models/sdn-fabric-0.1.x v0.1.2 h1:Qh5K6FL0LYz97+ZBocIIWkGWGBk1tpZB9TkJumxHsDc=
-github.com/onosproject/config-models/models/sdn-fabric-0.1.x v0.1.2/go.mod h1:40ja067B4QdDgxNMqoaBCAafdnYpYgE95ceMMwyK/1Y=
+github.com/onosproject/config-models/models/sdn-fabric-0.1.x v0.1.4 h1:y/1c5hPw9QVBZA4Xof0A5fQ6AJxTUXFfHLazSZVD46E=
+github.com/onosproject/config-models/models/sdn-fabric-0.1.x v0.1.4/go.mod h1:3TiOfbyL3xz3n3Wo1xz97E7WjJFrc58TTCHDlVV5Z/k=
 github.com/onosproject/helmit v0.6.8/go.mod h1:EorNGSNGWojXGxBEuiNmPScae+R2C5WYfg/13gKEPLw=
 github.com/onosproject/helmit v0.6.19/go.mod h1:4LUwMtLcV0njiCEcAoVdzoiRfit+04z4Yn7z8lXSuMk=
 github.com/onosproject/onos-api/go v0.8.0/go.mod h1:0hdMkFFN2AyKLHMiJVP3ZE61QgSYfNXHiI4BJ/Ry7UI=
@@ -931,7 +932,6 @@ github.com/onosproject/onos-api/go v0.8.10/go.mod h1:0hdMkFFN2AyKLHMiJVP3ZE61QgS
 github.com/onosproject/onos-api/go v0.8.54/go.mod h1:0hdMkFFN2AyKLHMiJVP3ZE61QgSYfNXHiI4BJ/Ry7UI=
 github.com/onosproject/onos-api/go v0.9.0/go.mod h1:0hdMkFFN2AyKLHMiJVP3ZE61QgSYfNXHiI4BJ/Ry7UI=
 github.com/onosproject/onos-api/go v0.9.8/go.mod h1:0hdMkFFN2AyKLHMiJVP3ZE61QgSYfNXHiI4BJ/Ry7UI=
-github.com/onosproject/onos-api/go v0.9.14 h1:0ig/YuCj9giWz0xcGmcAAfzlQwptAjP1jWHo2q6C1zo=
 github.com/onosproject/onos-api/go v0.9.14/go.mod h1:0hdMkFFN2AyKLHMiJVP3ZE61QgSYfNXHiI4BJ/Ry7UI=
 github.com/onosproject/onos-config v0.10.23/go.mod h1:qIxCTO5PVTjCvE8U/QWvnCZXagggq79J/vYyHsTARV8=
 github.com/onosproject/onos-lib-go v0.8.1/go.mod h1:1klcUPfLoXPVu4fzM/sYi1V3Pggm2NRbY2fTzG2W1HY=
@@ -1828,7 +1828,6 @@ gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C
 gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b h1:h8qDotaEPuJATrMmW04NCwg7v22aHH28wwpauUhK9Oo=
 gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
-gotest.tools v2.2.0+incompatible h1:VsBPFP1AI068pPrMxtb/S8Zkgf9xEmTLJjfM+P5UIEo=
 gotest.tools v2.2.0+incompatible/go.mod h1:DsYFclhRJ6vuDpmuTbkuFWG+y2sxOXAzmJt81HFBacw=
 gotest.tools/v3 v3.0.2/go.mod h1:3SzNCllyD9/Y+b5r9JIKQ474KzkZyqLqEfYqMsX94Bk=
 gotest.tools/v3 v3.0.3/go.mod h1:Z7Lb0S5l+klDB31fvDQX8ss/FlKDxtlFlw3Oa8Ymbl8=

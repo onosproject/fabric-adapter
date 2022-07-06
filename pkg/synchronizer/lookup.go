@@ -23,10 +23,10 @@ func lookupSwitchModel(scope *FabricScope, id *string) (*SwitchModel, error) {
 	return swm, nil
 }
 
-func lookupSwitchModelPort(model *SwitchModel, cage *uint8, channel *uint8) (*SwitchModelPort, error) {
+func lookupSwitchModelPort(model *SwitchModel, cage *uint8) (*SwitchModelPort, error) {
 	port, okay := model.Port[*cage]
 	if !okay {
-		return nil, fmt.Errorf("SwitchModel has no port matching %v/%v", cage, channel)
+		return nil, fmt.Errorf("SwitchModel has no port matching %v", cage)
 	}
 
 	return port, nil

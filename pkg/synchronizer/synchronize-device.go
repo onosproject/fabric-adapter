@@ -18,7 +18,7 @@ func (s *Synchronizer) handleSwitchPort(scope *FabricScope, p *Port) error {
 	sw := scope.Switch
 	model := scope.SwitchModel
 
-	modelPort, err := lookupSwitchModelPort(model, p.CageNumber, p.ChannelNumber)
+	modelPort, err := lookupSwitchModelPort(model, p.CageNumber)
 	if err != nil {
 		return err
 	}

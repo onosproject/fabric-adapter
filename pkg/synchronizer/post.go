@@ -40,7 +40,7 @@ func (p *RESTPusher) PushUpdate(endpoint string, username string, password strin
 
 	log.Infof("Push Update endpoint=%s data=%s", endpoint, string(data))
 	reader := bytes.NewReader(data)
-	req, err := http.NewRequest("POST", endpoint, reader)
+	req, err := http.NewRequest(http.MethodPost, endpoint, reader)
 	if err != nil {
 		return err
 	}

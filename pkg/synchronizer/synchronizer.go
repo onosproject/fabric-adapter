@@ -130,6 +130,22 @@ func WithPusher(pusher PusherInterface) SynchronizerOption {
 	}
 }
 
+// WithTopoEndpoint specifies the onos-topo endpoint to use
+func WithTopoEndpoint(topoEndpoint string) SynchronizerOption {
+	return func(s *Synchronizer) {
+		s.topoEndpoint = topoEndpoint
+	}
+}
+
+// WithCertPaths defines certificate paths
+func WithCertPaths(caPath string, keyPath string, certPath string) SynchronizerOption {
+	return func(s *Synchronizer) {
+		s.caPath = caPath
+		s.keyPath = keyPath
+		s.certPath = certPath
+	}
+}
+
 // NewSynchronizer creates a new Synchronizer
 func NewSynchronizer(opts ...SynchronizerOption) *Synchronizer {
 	// By default, push via REST. Test infrastructure can override this.

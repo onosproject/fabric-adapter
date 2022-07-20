@@ -32,6 +32,10 @@ type Synchronizer struct {
 	updateChannel       chan *ConfigUpdate
 	retryInterval       time.Duration
 	partialUpdateEnable bool
+	caPath              string
+	keyPath             string
+	certPath            string
+	topoEndpoint        string
 
 	sidUsed map[uint32]bool // list of sids that have been used
 
@@ -46,7 +50,7 @@ type Synchronizer struct {
 	// cache of previously synchronized updates
 	cache map[string]interface{}
 
-	// Promehtues fetchers for each endpoint
+	// Prometheus fetchers for each endpoint
 	prometheus map[string]*metrics.Fetcher
 
 	kafkaMsgChannel   chan string
@@ -72,6 +76,8 @@ type FabricScope struct {
 	Switch          *Switch      // The switch we're currently working on
 	SwitchModel     *SwitchModel // The switch model we're currently working on
 	OnosEndpoint    *string      // Endpoint of Onos to post to
+	OnosUsername    *string      // Username for authenticating to ONOS
+	OnosPassword    *string      // Password for authenticating to ONOS
 	StratumEndpoint *string      // Endpoint of Fabric to post to
 	NetConfig       *OnosNetConfig
 }

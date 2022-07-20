@@ -7,6 +7,7 @@
 package synchronizer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
@@ -211,7 +212,7 @@ nextSwitch:
 	}
 
 	url := fmt.Sprintf("%sonos/v1/network/configuration", *scope.OnosEndpoint)
-	err = s.pusher.PushUpdate(url, data)
+	err = s.pusher.PushUpdate(url, *scope.OnosUsername, *scope.OnosPassword, data)
 	if err != nil {
 		return 1, fmt.Errorf("Fabric %s failed to Push netconfig update: %s", *scope.FabricId, err)
 	}
@@ -233,14 +234,23 @@ func (s *Synchronizer) SynchronizeDevice(allConfig *gnmi.ConfigForest) (int, err
 
 		log.Info("SynchronizeDevce")
 
+		controllerInfo, err := lookupFabricControllerInfo(context.Background(), s, fabricID)
+		if err != nil {
+			return 0, err
+		}
+
 		tStart := time.Now()
 		KpiSynchronizationTotal.WithLabelValues(fabricID).Inc()
 
+		uri := fmt.Sprintf("http://%s:%d/", controllerInfo.ControlEndpoint.Address, controllerInfo.ControlEndpoint.Port)
+		log.Info("controller uri: %s", uri)
 		scope := &FabricScope{
 			FabricId:        &fabricID,
 			Fabric:          device,
-			OnosEndpoint:    aStr("http://fabric-umbrella-fabric-test-dummy/"),
-			StratumEndpoint: aStr("http://fabric-umbrella-fabric-test-dummy/"),
+			OnosEndpoint:    aStr(uri),
+			OnosUsername:    aStr(controllerInfo.Username),
+			OnosPassword:    aStr(controllerInfo.Password),
+			StratumEndpoint: aStr(uri),
 			NetConfig: &OnosNetConfig{
 				Devices: map[string]*onosDevice{},
 				Ports:   map[string]*onosPort{},

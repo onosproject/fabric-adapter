@@ -37,6 +37,10 @@ var (
 	aetherConfigTarget   = flag.String("aether_config_target", "connectivity-service-v4", "Target to use when pulling from aether-config")
 	showModelList        = flag.Bool("show_models", false, "Show list of available modes")
 	diagsPort            = flag.Uint("diags_port", 8080, "Port to use for Diagnostics API")
+	caPath               = flag.String("caPath", "", "path to CA certificate")
+	keyPath              = flag.String("keyPath", "", "path to client private key")
+	certPath             = flag.String("certPath", "", "path to client certificate")
+	topoEndpoint         = flag.String("topoEndpoint", "onos-topo:5150", "onos-topo endpoint address")
 )
 
 var log = logging.GetLogger("fabric-adapter")
@@ -79,7 +83,10 @@ func main() {
 	sync = synchronizer.NewSynchronizer(
 		synchronizer.WithPostEnable(!*postDisable),
 		synchronizer.WithPartialUpdateEnable(!*partialUpdateDisable),
-		synchronizer.WithPostTimeout(*postTimeout))
+		synchronizer.WithPostTimeout(*postTimeout),
+		synchronizer.WithCertPaths(*caPath, *keyPath, *certPath),
+		synchronizer.WithTopoEndpoint(*topoEndpoint),
+	)
 
 	// The synchronizer will convey its list of models.
 	model := sync.GetModels()

@@ -32,17 +32,22 @@ type RESTPusher struct {
 }
 
 // PushUpdate pushes an update to the REST endpoint.
-func (p *RESTPusher) PushUpdate(endpoint string, data []byte) error {
+func (p *RESTPusher) PushUpdate(endpoint string, username string, password string, data []byte) error {
+
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
 
 	log.Infof("Push Update endpoint=%s data=%s", endpoint, string(data))
+	reader := bytes.NewReader(data)
+	req, err := http.NewRequest("POST", endpoint, reader)
+	if err != nil {
+		return err
+	}
 
-	resp, err := client.Post(
-		endpoint,
-		"application/json",
-		bytes.NewBuffer(data))
+	req.SetBasicAuth(username, password)
+	req.Header.Add("Content-Type", "application/json;charset=utf-8")
+	resp, err := client.Do(req)
 
 	/* In the future, PUT will be the correct operation
 	resp, err := httpPut(client, endpoint, "application/json", data)

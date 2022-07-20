@@ -21,6 +21,6 @@ type SynchronizerInterface interface { //nolint
 // PusherInterface is an interface to a pusher, which pushes json to underlying services.
 //go:generate mockgen -destination=../test/mocks/mock_pusher.go -package=mocks github.com/onosproject/sdcore-adapter/pkg/synchronizer PusherInterface
 type PusherInterface interface {
-	PushUpdate(endpoint string, data []byte) error
+	PushUpdate(endpoint string, username string, password string, data []byte) error
 	PushDelete(endpoint string) error
 }

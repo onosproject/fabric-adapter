@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
+	"github.com/pkg/errors"
 	"sort"
 	"time"
 )
@@ -89,8 +90,18 @@ func (s *Synchronizer) handleSwitch(scope *FabricScope) error {
 	device := &onosDevice{}
 
 	device.Basic.Name = *sw.DisplayName
-	device.Basic.Driver = "stratum-tofino"
-	device.Basic.PipeConf = "org.stratumproject.fabric-upf-int.montara_sde_9_7_0"
+	driver := sw.Attribute["driver"]
+	if driver == nil || driver.Value == nil || *driver.Value == "" {
+		return errors.New("switch driver attribute must be specified")
+	}
+
+	device.Basic.Driver = *driver.Value
+
+	pipeconf := sw.Attribute["pipeconf"]
+	if pipeconf == nil || pipeconf.Value == nil || *pipeconf.Value == "" {
+		return errors.New("switch pipeconf attribute must be specified")
+	}
+	device.Basic.PipeConf = *pipeconf.Value
 	device.Basic.ManagementAddress = fmt.Sprintf("grpc://%s:%d?device_id=1", *sw.Management.Address, *sw.Management.PortNumber)
 	// omit for now: locType, gridX, gridY
 
@@ -98,15 +109,37 @@ func (s *Synchronizer) handleSwitch(scope *FabricScope) error {
 	device.SegmentRouting.IsEdgeRouter = sw.Role != RoleSpine // TODO: smbaker: verify with charles
 	device.SegmentRouting.Ipv4Loopback = *sw.Management.Address
 	device.SegmentRouting.RouterMac, err = addressToMac(*sw.Management.Address)
+	device.SegmentRouting.AdjacencySids = []uint16{}
 
 	if err != nil {
 		return fmt.Errorf("Fabric %s switch %s unable to create routermac: %s", *scope.FabricId, *sw.SwitchId, err)
 	}
 
 	// segmentRouting
-	// ipv4NodeSide, ipv4Loopback, routerMac, isEdgeRouter, adjacenySids
+	// ipv4NodeSide, ipv4Loopback, routerMac
 
-	scope.NetConfig.Devices[*sw.SwitchId] = device
+	/*
+		"device:spine1": {
+			"basic": {
+				"name": "spine1",
+					"managementAddress": "grpc://mininet-stratum:50003?device_id=1",
+					"driver": "stratum-bmv2-la",
+					"pipeconf": "org.stratumproject.fabric.bmv2",
+					"locType": "grid",
+					"gridX": 400,
+					"gridY": 400
+			},
+			"segmentrouting": {
+				"ipv4NodeSid": 201,
+					"ipv4Loopback": "192.168.2.1",
+					"routerMac": "00:BB:00:00:00:01",
+					"isEdgeRouter": false,
+					"adjacencySids": []
+		}
+		},
+	*/
+
+	scope.NetConfig.Devices["device:"+*sw.SwitchId] = device
 
 	// Ports
 

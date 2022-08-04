@@ -104,7 +104,7 @@ func aUint64(u uint64) *uint64 {
 	return &u
 }
 
-// cageChannelToPort convergs a cage and channel to a single port integer
+// cageChannelToPort converts a cage and channel to a single port integer
 func cageChannelToPort(cage *uint8, channel *uint8) uint16 {
 	if cage == nil {
 		return uint16(*channel)
@@ -118,7 +118,7 @@ func switchCageChannelToDeviceId(sw *Switch, cage *uint8, channel *uint8) string
 }
 
 func addressToMac(address string) (string, error) {
-	ip := net.ParseIP(address)
+	ip := net.ParseIP(managementAddressToIP(address))
 	if ip == nil {
 		return "", fmt.Errorf("%s is not a valid IP address", address)
 	}
@@ -131,9 +131,22 @@ func addressToMac(address string) (string, error) {
 
 func addressToSid(address string) uint32 {
 	h := sha1.New()
-	h.Write([]byte(address))
+	h.Write([]byte(managementAddressToIP(address)))
 	hashBytes := h.Sum(nil)
 
 	// 20-bit number that is greater than 16
-	return ((uint32(hashBytes[1]<<16) + uint32(hashBytes[1]<<8) + uint32(hashBytes[2]) + 17) & 0x0FFFFF)
+	return (uint32(hashBytes[1])<<16 + uint32(hashBytes[1])<<8 + uint32(hashBytes[2]) + 17) & 0x0FFFFF
+}
+
+var nextIP uint32 = 0
+
+func managementAddressToIP(address string) string {
+	ip := net.ParseIP(address)
+	if ip != nil {
+		return address
+	}
+
+	retval := fmt.Sprintf("192.168.55.%d", nextIP)
+	nextIP++
+	return retval
 }

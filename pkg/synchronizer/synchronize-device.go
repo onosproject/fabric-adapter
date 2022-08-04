@@ -64,8 +64,8 @@ func (s *Synchronizer) handleSwitchPort(scope *FabricScope, p *Port) error {
 }
 
 // get a unique sid for the switch, dealing with potential collisions
-func (s *Synchronizer) getUniqueSid(scope *FabricScope) uint32 {
-	sid := addressToSid(*scope.Switch.Management.Address)
+func (s *Synchronizer) getUniqueSid(address string) uint32 {
+	sid := addressToSid(address)
 	for {
 		_, okay := s.sidUsed[sid]
 		if !okay {
@@ -105,39 +105,16 @@ func (s *Synchronizer) handleSwitch(scope *FabricScope) error {
 	device.Basic.ManagementAddress = fmt.Sprintf("grpc://%s:%d?device_id=1", *sw.Management.Address, *sw.Management.PortNumber)
 	// omit for now: locType, gridX, gridY
 
-	device.SegmentRouting.Ipv4NodeSid = s.getUniqueSid(scope) // TODO: smbaker: probably of collision is not negligible
-	device.SegmentRouting.IsEdgeRouter = sw.Role != RoleSpine // TODO: smbaker: verify with charles
-	device.SegmentRouting.Ipv4Loopback = *sw.Management.Address
-	device.SegmentRouting.RouterMac, err = addressToMac(*sw.Management.Address)
-	device.SegmentRouting.AdjacencySids = []uint16{}
-
-	if err != nil {
-		return fmt.Errorf("Fabric %s switch %s unable to create routermac: %s", *scope.FabricId, *sw.SwitchId, err)
-	}
-
 	// segmentRouting
-	// ipv4NodeSide, ipv4Loopback, routerMac
-
-	/*
-		"device:spine1": {
-			"basic": {
-				"name": "spine1",
-					"managementAddress": "grpc://mininet-stratum:50003?device_id=1",
-					"driver": "stratum-bmv2-la",
-					"pipeconf": "org.stratumproject.fabric.bmv2",
-					"locType": "grid",
-					"gridX": 400,
-					"gridY": 400
-			},
-			"segmentrouting": {
-				"ipv4NodeSid": 201,
-					"ipv4Loopback": "192.168.2.1",
-					"routerMac": "00:BB:00:00:00:01",
-					"isEdgeRouter": false,
-					"adjacencySids": []
-		}
-		},
-	*/
+	// Ipv4 Node Sid, Ipv4 Loopback, Router Mac, Is Edge Router, Adjacency Sids
+	device.SegmentRouting.AdjacencySids = []uint16{}
+	device.SegmentRouting.Ipv4Loopback = managementAddressToIP(*sw.Management.Address)
+	device.SegmentRouting.Ipv4NodeSid = s.getUniqueSid(device.SegmentRouting.Ipv4Loopback) // TODO: smbaker: probably of collision is not negligible
+	device.SegmentRouting.IsEdgeRouter = sw.Role != RoleSpine
+	device.SegmentRouting.RouterMac, err = addressToMac(device.SegmentRouting.Ipv4Loopback)
+	if err != nil {
+		return fmt.Errorf("fabric %s switch %s unable to create routermac: %s", *scope.FabricId, *sw.SwitchId, err)
+	}
 
 	scope.NetConfig.Devices["device:"+*sw.SwitchId] = device
 

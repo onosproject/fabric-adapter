@@ -63,17 +63,17 @@ func (s *Synchronizer) handleSwitchPort(scope *FabricScope, p *Port) error {
 	return nil
 }
 
-// get a unique sid for the switch, dealing with potential collisions
-func (s *Synchronizer) getUniqueSid(address string) uint32 {
-	sid := addressToSid(address)
-	for {
-		_, okay := s.sidUsed[sid]
-		if !okay {
-			s.sidUsed[sid] = true
-			return sid
-		}
-		sid++
+// get a unique sid for the switch from atomix
+func (s *Synchronizer) getUniqueSid(switchName string) (uint32, error) {
+	if sid, ok := s.sidMap[switchName]; ok {
+		return sid, nil
 	}
+
+	newSid, err := s.nextSID.Increment(context.Background(), 1)
+	if err == nil {
+		//s.sidMap[switchName] = uint32(newSid)
+	}
+	return uint32(newSid), err
 }
 
 func (s *Synchronizer) handleSwitch(scope *FabricScope) error {
@@ -96,6 +96,13 @@ func (s *Synchronizer) handleSwitch(scope *FabricScope) error {
 	}
 
 	device.Basic.Driver = *driver.Value
+	device.SegmentRouting.Ipv4NodeSid, err = s.getUniqueSid(*sw.SwitchId)
+	if err != nil {
+		return fmt.Errorf("fabric %s switch %s unable to create SID: %s", *scope.FabricId, *sw.SwitchId, err)
+	}
+	device.SegmentRouting.IsEdgeRouter = sw.Role != RoleSpine // TODO: smbaker: verify with charles
+	device.SegmentRouting.Ipv4Loopback = *sw.Management.Address
+	device.SegmentRouting.RouterMac, err = addressToMac(*sw.Management.Address)
 
 	pipeconf := sw.Attribute["pipeconf"]
 	if pipeconf == nil || pipeconf.Value == nil || *pipeconf.Value == "" {
@@ -109,7 +116,7 @@ func (s *Synchronizer) handleSwitch(scope *FabricScope) error {
 	// Ipv4 Node Sid, Ipv4 Loopback, Router Mac, Is Edge Router, Adjacency Sids
 	device.SegmentRouting.AdjacencySids = []uint16{}
 	device.SegmentRouting.Ipv4Loopback = managementAddressToIP(*sw.Management.Address)
-	device.SegmentRouting.Ipv4NodeSid = s.getUniqueSid(device.SegmentRouting.Ipv4Loopback) // TODO: smbaker: probably of collision is not negligible
+	//device.SegmentRouting.Ipv4NodeSid = s.getUniqueSid(device.SegmentRouting.Ipv4Loopback) // TODO: smbaker: probably of collision is not negligible
 	device.SegmentRouting.IsEdgeRouter = sw.Role != RoleSpine
 	device.SegmentRouting.RouterMac, err = addressToMac(device.SegmentRouting.Ipv4Loopback)
 	if err != nil {
@@ -236,8 +243,6 @@ nextSwitch:
 //   1) pushFailures -- a count of pushes that failed to the core. Synchronizer should retry again later.
 //   2) error -- a fatal error that occurred during synchronization.
 func (s *Synchronizer) SynchronizeDevice(allConfig *gnmi.ConfigForest) (int, error) {
-	s.sidUsed = map[uint32]bool{}
-
 	pushFailuresTotal := 0
 	for fabricID, fabricConfig := range allConfig.Configs {
 		device := fabricConfig.(*RootDevice)

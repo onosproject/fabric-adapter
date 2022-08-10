@@ -7,12 +7,15 @@
 package synchronizer
 
 import (
+	"context"
+	"github.com/atomix/atomix-go-client/pkg/atomix"
 	models "github.com/onosproject/config-models/models/sdn-fabric-0.1.x/api"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
 	"github.com/onosproject/sdcore-adapter/pkg/metrics"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
+	"os"
 	"reflect"
 	"time"
 )
@@ -99,6 +102,15 @@ func (s *Synchronizer) Start() {
 		s.partialUpdateEnable)
 
 	// TODO: Eventually we'll create a thread here that waits for config changes
+	log.Warn("Getting atomix client")
+	atomixClient := atomix.NewClient(atomix.WithClientID(os.Getenv("POD_NAME")))
+	var err error
+	log.Warn("getting counter")
+	s.nextSID, err = atomixClient.GetCounter(context.Background(), SidCounter)
+	if err != nil {
+		log.Warnf("Error creating atomix counter: %v", err)
+		return
+	}
 	go s.Loop()
 }
 

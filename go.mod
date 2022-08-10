@@ -3,6 +3,7 @@ module github.com/onosproject/fabric-adapter
 go 1.16
 
 require (
+	github.com/atomix/atomix-go-client v0.6.2
 	github.com/google/gnxi v0.0.0-20210716134716-cb5c55758a07
 	github.com/onosproject/config-models/models/sdn-fabric-0.1.x v0.1.7
 	github.com/onosproject/onos-api/go v0.9.24

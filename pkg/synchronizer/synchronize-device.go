@@ -65,13 +65,17 @@ func (s *Synchronizer) handleSwitchPort(scope *FabricScope, p *Port) error {
 
 // get a unique sid for the switch from atomix
 func (s *Synchronizer) getUniqueSid(switchName string) (uint32, error) {
+	log.Warnf("Looking for switch %s", switchName)
 	if sid, ok := s.sidMap[switchName]; ok {
+		log.Warnf("Switch found with SID %d", sid)
 		return sid, nil
 	}
 
 	newSid, err := s.nextSID.Increment(context.Background(), 1)
 	if err == nil {
-		//s.sidMap[switchName] = uint32(newSid)
+		log.Warnf("Allocated new SID %d", newSid)
+
+		s.sidMap[switchName] = uint32(newSid)
 	}
 	return uint32(newSid), err
 }

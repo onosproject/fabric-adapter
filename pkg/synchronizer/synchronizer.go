@@ -111,6 +111,7 @@ func (s *Synchronizer) Start() {
 		log.Warnf("Error creating atomix counter: %v", err)
 		return
 	}
+	s.sidMap = make(map[string]uint32)
 	go s.Loop()
 }
 

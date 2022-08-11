@@ -7,12 +7,15 @@
 package synchronizer
 
 import (
+	"context"
+	"github.com/atomix/atomix-go-client/pkg/atomix"
 	models "github.com/onosproject/config-models/models/sdn-fabric-0.1.x/api"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
 	"github.com/onosproject/sdcore-adapter/pkg/metrics"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 	"github.com/openconfig/ygot/ygot"
+	"os"
 	"reflect"
 	"time"
 )
@@ -35,7 +38,7 @@ func (s *Synchronizer) Synchronize(config *gnmi.ConfigForest, callbackType gnmi.
 }
 
 // SynchronizeAndRetry automatically retries if synchronization fails
-func (s *Synchronizer) SynchronizeAndRetry(update *ConfigUpdate) {
+func (s *Synchronizer) SynchronizeAndRetry(ctx context.Context, update *ConfigUpdate) {
 	for {
 		// If something new has come along, then don't bother with the one we're working on
 		if s.newUpdatesPending() {
@@ -43,7 +46,7 @@ func (s *Synchronizer) SynchronizeAndRetry(update *ConfigUpdate) {
 			return
 		}
 
-		pushErrors, err := s.synchronizeDeviceFunc(update.config)
+		pushErrors, err := s.synchronizeDeviceFunc(ctx, update.config)
 		if err != nil {
 			log.Errorf("Synchronization error: %v", err)
 			return
@@ -71,7 +74,7 @@ func (s *Synchronizer) Loop() {
 
 		log.Infof("Synchronize, type=%s", update.callbackType)
 
-		s.SynchronizeAndRetry(update)
+		s.SynchronizeAndRetry(context.Background(), update)
 
 		s.complete()
 	}
@@ -90,6 +93,24 @@ func (s *Synchronizer) GetModels() *gnmi.Model {
 	return model
 }
 
+//
+func (s *Synchronizer) setUpPrimitives(ctx context.Context) {
+	log.Warn("Getting atomix client")
+	atomixClient := atomix.NewClient(atomix.WithClientID(os.Getenv("POD_NAME")))
+	var err error
+	log.Warn("getting counter")
+	s.nextSID, err = atomixClient.GetCounter(ctx, SidCounter)
+	if err != nil {
+		log.Warnf("Error creating atomix counter: %v", err)
+		return
+	}
+	s.sidMap, err = atomixClient.GetMap(ctx, SidMap)
+	if err != nil {
+		log.Warnf("Error creating atomix map: %v", err)
+		return
+	}
+}
+
 // Start the synchronizer by launching the synchronizer loop inside a thread.
 func (s *Synchronizer) Start() {
 	log.Infof("Synchronizer starting (postEnable=%v, postTimeout=%d, retryInterval=%s, partialUpdateEnable=%v)",
@@ -99,6 +120,7 @@ func (s *Synchronizer) Start() {
 		s.partialUpdateEnable)
 
 	// TODO: Eventually we'll create a thread here that waits for config changes
+	s.setUpPrimitives(context.Background())
 	go s.Loop()
 }
 

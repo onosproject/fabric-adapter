@@ -3,6 +3,8 @@ module github.com/onosproject/fabric-adapter
 go 1.16
 
 require (
+	github.com/atomix/atomix-go-client v0.6.2
+	github.com/atomix/atomix-go-framework v0.10.1
 	github.com/google/gnxi v0.0.0-20210716134716-cb5c55758a07
 	github.com/onosproject/config-models/models/sdn-fabric-0.1.x v0.1.7
 	github.com/onosproject/onos-api/go v0.9.24
@@ -14,4 +16,5 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.41.0
+
 )

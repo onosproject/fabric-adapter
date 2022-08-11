@@ -7,6 +7,9 @@
 package synchronizer
 
 import (
+	"context"
+	"github.com/atomix/atomix-go-client/pkg/atomix/counter"
+	_map "github.com/atomix/atomix-go-client/pkg/atomix/map"
 	"time"
 
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
@@ -22,6 +25,12 @@ const (
 
 	// DefaultPartialUpdateEnable is the default partial update setting
 	DefaultPartialUpdateEnable = true
+
+	// SidCounter is the name used for atomix counter for generating unique SIDs
+	SidCounter = "fabric-adapter-sid-counter"
+
+	// SidMap is the name used for atomix counter for generating unique SIDs
+	SidMap = "fabric-adapter-sid-map"
 )
 
 // Synchronizer is a Version 3 synchronizer.
@@ -37,15 +46,13 @@ type Synchronizer struct {
 	certPath            string
 	topoEndpoint        string
 
-	sidUsed map[uint32]bool // list of sids that have been used
-
 	// Busy indicator, primarily used for unit testing. The channel length in and of itself
 	// is not sufficient, as it does not include the potential update that is currently syncing.
 	// >0 if the synchronizer has operations pending and/or in-progress
 	busy int32
 
 	// used for ease of mocking
-	synchronizeDeviceFunc func(config *gnmi.ConfigForest) (int, error)
+	synchronizeDeviceFunc func(ctx context.Context, config *gnmi.ConfigForest) (int, error)
 
 	// cache of previously synchronized updates
 	cache map[string]interface{}
@@ -55,6 +62,9 @@ type Synchronizer struct {
 
 	kafkaMsgChannel   chan string
 	kafkaErrorChannel chan error
+
+	nextSID counter.Counter
+	sidMap  _map.Map
 }
 
 // ConfigUpdate holds the configuration for a particular synchronization request

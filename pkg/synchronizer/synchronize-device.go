@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	atomixerrors "github.com/atomix/atomix-go-framework/pkg/atomix/errors"
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
 	"github.com/pkg/errors"
 	"sort"
@@ -63,20 +64,32 @@ func (s *Synchronizer) handleSwitchPort(scope *FabricScope, p *Port) error {
 	return nil
 }
 
-// get a unique sid for the switch, dealing with potential collisions
-func (s *Synchronizer) getUniqueSid(address string) uint32 {
-	sid := addressToSid(address)
-	for {
-		_, okay := s.sidUsed[sid]
-		if !okay {
-			s.sidUsed[sid] = true
-			return sid
-		}
-		sid++
+// get a unique sid for the switch from atomix
+func (s *Synchronizer) getUniqueSid(ctx context.Context, switchName string) (uint32, error) {
+	log.Infof("Looking for switch %s", switchName)
+	entry, err := s.sidMap.Get(ctx, switchName)
+	if entry != nil && err == nil {
+		sid := bytesToUint32(entry.Value)
+		log.Warnf("Switch found with SID %d", sid)
+		return sid, nil
 	}
+
+	if !atomixerrors.IsNotFound(err) {
+		log.Errorf("Error getting from SID map: %v", err)
+		return 0, err
+	}
+
+	newSid, err := s.nextSID.Increment(ctx, 1)
+	if err == nil {
+		log.Infof("Allocated new SID %d", newSid)
+		sidValue := uint32ToBytes(uint32(newSid))
+
+		_, err = s.sidMap.Put(ctx, switchName, sidValue)
+	}
+	return uint32(newSid), err
 }
 
-func (s *Synchronizer) handleSwitch(scope *FabricScope) error {
+func (s *Synchronizer) handleSwitch(ctx context.Context, scope *FabricScope) error {
 	var err error
 
 	sw := scope.Switch
@@ -96,6 +109,16 @@ func (s *Synchronizer) handleSwitch(scope *FabricScope) error {
 	}
 
 	device.Basic.Driver = *driver.Value
+	device.SegmentRouting.Ipv4NodeSid, err = s.getUniqueSid(ctx, *sw.SwitchId)
+	if err != nil {
+		return fmt.Errorf("fabric %s switch %s unable to create SID: %s", *scope.FabricId, *sw.SwitchId, err)
+	}
+	device.SegmentRouting.IsEdgeRouter = sw.Role != RoleSpine
+	device.SegmentRouting.Ipv4Loopback = *sw.Management.Address
+	device.SegmentRouting.RouterMac, err = addressToMac(*sw.Management.Address)
+	if err != nil {
+		return fmt.Errorf("fabric %s switch %s unable to create MAC: %s", *scope.FabricId, *sw.SwitchId, err)
+	}
 
 	pipeconf := sw.Attribute["pipeconf"]
 	if pipeconf == nil || pipeconf.Value == nil || *pipeconf.Value == "" {
@@ -109,7 +132,7 @@ func (s *Synchronizer) handleSwitch(scope *FabricScope) error {
 	// Ipv4 Node Sid, Ipv4 Loopback, Router Mac, Is Edge Router, Adjacency Sids
 	device.SegmentRouting.AdjacencySids = []uint16{}
 	device.SegmentRouting.Ipv4Loopback = managementAddressToIP(*sw.Management.Address)
-	device.SegmentRouting.Ipv4NodeSid = s.getUniqueSid(device.SegmentRouting.Ipv4Loopback) // TODO: smbaker: probably of collision is not negligible
+	//device.SegmentRouting.Ipv4NodeSid = s.getUniqueSid(device.SegmentRouting.Ipv4Loopback) // TODO: smbaker: probably of collision is not negligible
 	device.SegmentRouting.IsEdgeRouter = sw.Role != RoleSpine
 	device.SegmentRouting.RouterMac, err = addressToMac(device.SegmentRouting.Ipv4Loopback)
 	if err != nil {
@@ -173,7 +196,7 @@ func (s *Synchronizer) handleRoute(scope *FabricScope, route *Route) error {
 }
 
 // SynchronizeFabricToOnos pushes a fabric to an onos netconfig
-func (s *Synchronizer) SynchronizeFabricToOnos(scope *FabricScope) (int, error) {
+func (s *Synchronizer) SynchronizeFabricToOnos(ctx context.Context, scope *FabricScope) (int, error) {
 	// be deterministic...
 	switchIDKeys := []string{}
 	for k := range scope.Fabric.Switch {
@@ -192,7 +215,7 @@ nextSwitch:
 			continue nextSwitch
 		}
 
-		err = s.handleSwitch(scope)
+		err = s.handleSwitch(ctx, scope)
 		if err != nil {
 			// log the error and continue with next switch
 			log.Warn(err)
@@ -235,16 +258,14 @@ nextSwitch:
 // SynchronizeDevice synchronizes a device. Two sets of error state are returned:
 //   1) pushFailures -- a count of pushes that failed to the core. Synchronizer should retry again later.
 //   2) error -- a fatal error that occurred during synchronization.
-func (s *Synchronizer) SynchronizeDevice(allConfig *gnmi.ConfigForest) (int, error) {
-	s.sidUsed = map[uint32]bool{}
-
+func (s *Synchronizer) SynchronizeDevice(ctx context.Context, allConfig *gnmi.ConfigForest) (int, error) {
 	pushFailuresTotal := 0
 	for fabricID, fabricConfig := range allConfig.Configs {
 		device := fabricConfig.(*RootDevice)
 
 		log.Info("SynchronizeDevce")
 
-		controllerInfo, err := lookupFabricControllerInfo(context.Background(), s, fabricID)
+		controllerInfo, err := lookupFabricControllerInfo(ctx, s, fabricID)
 		if err != nil {
 			return 0, err
 		}
@@ -267,7 +288,7 @@ func (s *Synchronizer) SynchronizeDevice(allConfig *gnmi.ConfigForest) (int, err
 				Apps:    map[string]*onosApp{},
 			}}
 
-		pushFailures, err := s.SynchronizeFabricToOnos(scope)
+		pushFailures, err := s.SynchronizeFabricToOnos(ctx, scope)
 		if err != nil {
 			log.Warnf("Failed to push fabric %s: %v", fabricID, err)
 		}

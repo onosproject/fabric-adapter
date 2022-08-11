@@ -7,7 +7,9 @@
 package synchronizer
 
 import (
+	"context"
 	"github.com/atomix/atomix-go-client/pkg/atomix/counter"
+	_map "github.com/atomix/atomix-go-client/pkg/atomix/map"
 	"time"
 
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
@@ -50,7 +52,7 @@ type Synchronizer struct {
 	busy int32
 
 	// used for ease of mocking
-	synchronizeDeviceFunc func(config *gnmi.ConfigForest) (int, error)
+	synchronizeDeviceFunc func(ctx context.Context, config *gnmi.ConfigForest) (int, error)
 
 	// cache of previously synchronized updates
 	cache map[string]interface{}
@@ -62,7 +64,7 @@ type Synchronizer struct {
 	kafkaErrorChannel chan error
 
 	nextSID counter.Counter
-	sidMap  map[string]uint32
+	sidMap  _map.Map
 }
 
 // ConfigUpdate holds the configuration for a particular synchronization request

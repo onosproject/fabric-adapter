@@ -8,6 +8,7 @@ package synchronizer
 
 import (
 	"crypto/sha1"
+	"encoding/binary"
 	"fmt"
 	"net"
 )
@@ -102,6 +103,17 @@ func aUint32(u uint32) *uint32 {
 // aUint64 facilitates easy declaring of pointers to uint64
 func aUint64(u uint64) *uint64 {
 	return &u
+}
+
+func uint32ToBytes(i uint32) []byte {
+	value := make([]byte, 4)
+	binary.LittleEndian.PutUint32(value, i)
+
+	return value
+}
+
+func bytesToUint32(value []byte) uint32 {
+	return binary.LittleEndian.Uint32(value)
 }
 
 // cageChannelToPort converts a cage and channel to a single port integer

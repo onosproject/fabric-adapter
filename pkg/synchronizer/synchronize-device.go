@@ -113,9 +113,12 @@ func (s *Synchronizer) handleSwitch(ctx context.Context, scope *FabricScope) err
 	if err != nil {
 		return fmt.Errorf("fabric %s switch %s unable to create SID: %s", *scope.FabricId, *sw.SwitchId, err)
 	}
-	device.SegmentRouting.IsEdgeRouter = sw.Role != RoleSpine // TODO: smbaker: verify with charles
+	device.SegmentRouting.IsEdgeRouter = sw.Role != RoleSpine
 	device.SegmentRouting.Ipv4Loopback = *sw.Management.Address
 	device.SegmentRouting.RouterMac, err = addressToMac(*sw.Management.Address)
+	if err != nil {
+		return fmt.Errorf("fabric %s switch %s unable to create MAC: %s", *scope.FabricId, *sw.SwitchId, err)
+	}
 
 	pipeconf := sw.Attribute["pipeconf"]
 	if pipeconf == nil || pipeconf.Value == nil || *pipeconf.Value == "" {

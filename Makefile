@@ -12,6 +12,7 @@ export GO111MODULE=on
 .PHONY: build
 
 VERSION                     ?= $(shell cat ./VERSION)
+ONOS_PROTOC_VERSION         := v1.2.1
 
 KIND_CLUSTER_NAME           ?= kind
 DOCKER_REPOSITORY           ?= onosproject/
@@ -65,6 +66,17 @@ fabric-adapter-docker:
 	$(DOCKER_BUILD_ARGS) \
 	-t ${DOCKER_REPOSITORY}fabric-adapter:${FABRIC_ADAPTER_VERSION}
 
+protos: # @HELP compile the protobuf files (using protoc-go Docker)
+protos:
+	rm -rf ./stratum
+	git clone https://github.com/stratum/stratum.git
+	docker run \
+	    -v `pwd`:/onos-api \
+		-w /onos-api \
+		--entrypoint build/bin/compile-protos.sh \
+		onosproject/protoc-go:${ONOS_PROTOC_VERSION}
+	cp go/stratum/hal/lib/common/common.pb.go pkg/stratum_hal/common.pb.go
+
 kind: # @HELP build Docker images and add them to the currently configured kind cluster
 kind: images kind-only
 
@@ -86,3 +98,4 @@ clean:: # @HELP remove all the build artifacts
 	rm -rf ./build/_output
 	rm -rf ./vendor
 	rm -rf ./cmd/fabric-adapter/fabric-adapter
+	rm -rf ./stratum

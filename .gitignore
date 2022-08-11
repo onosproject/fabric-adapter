@@ -17,7 +17,8 @@
 *.out
 
 # Built artifacts
-build/_output/*
+build/_output
+build/build-tools
 **/_output
 
 # Dependency directories (remove the comment below to include it)
@@ -31,4 +32,6 @@ build/build-tools
 *coverage*.xml
 *-output.out
 
-
+# Stratum files
+stratum/
+go/*

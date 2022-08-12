@@ -27,3 +27,5 @@ issues:
   exclude-use-default: false
   exclude:
     - Error return value of `.*Close` is not checked
+    - Error return value of `.*Stop` is not checked
+

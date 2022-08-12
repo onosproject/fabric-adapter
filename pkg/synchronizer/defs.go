@@ -8,8 +8,7 @@ package synchronizer
 
 import (
 	"context"
-	"github.com/atomix/atomix-go-client/pkg/atomix/counter"
-	_map "github.com/atomix/atomix-go-client/pkg/atomix/map"
+	"github.com/onosproject/fabric-adapter/pkg/store"
 	"time"
 
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
@@ -25,12 +24,6 @@ const (
 
 	// DefaultPartialUpdateEnable is the default partial update setting
 	DefaultPartialUpdateEnable = true
-
-	// SidCounter is the name used for atomix counter for generating unique SIDs
-	SidCounter = "fabric-adapter-sid-counter"
-
-	// SidMap is the name used for atomix counter for generating unique SIDs
-	SidMap = "fabric-adapter-sid-map"
 )
 
 // Synchronizer is a Version 3 synchronizer.
@@ -63,8 +56,7 @@ type Synchronizer struct {
 	kafkaMsgChannel   chan string
 	kafkaErrorChannel chan error
 
-	nextSID counter.Counter
-	sidMap  _map.Map
+	sidStore store.SIDStore
 }
 
 // ConfigUpdate holds the configuration for a particular synchronization request

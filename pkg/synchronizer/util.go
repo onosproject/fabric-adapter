@@ -7,8 +7,6 @@
 package synchronizer
 
 import (
-	"crypto/sha1"
-	"encoding/binary"
 	"fmt"
 	"net"
 )
@@ -105,17 +103,6 @@ func aUint64(u uint64) *uint64 {
 	return &u
 }
 
-func uint32ToBytes(i uint32) []byte {
-	value := make([]byte, 4)
-	binary.LittleEndian.PutUint32(value, i)
-
-	return value
-}
-
-func bytesToUint32(value []byte) uint32 {
-	return binary.LittleEndian.Uint32(value)
-}
-
 // cageChannelToPort converts a cage and channel to a single port integer
 func cageChannelToPort(cage *uint8, channel *uint8) uint16 {
 	if cage == nil {
@@ -139,15 +126,6 @@ func addressToMac(address string) (string, error) {
 	} else {
 		return fmt.Sprintf("%02X:%02X:%02X:%02X:%02X:%02X", 0, 0, ip[0], ip[1], ip[2], ip[3]), nil
 	}
-}
-
-func addressToSid(address string) uint32 {
-	h := sha1.New()
-	h.Write([]byte(managementAddressToIP(address)))
-	hashBytes := h.Sum(nil)
-
-	// 20-bit number that is greater than 16
-	return (uint32(hashBytes[1])<<16 + uint32(hashBytes[1])<<8 + uint32(hashBytes[2]) + 17) & 0x0FFFFF
 }
 
 var nextIP uint32 = 0

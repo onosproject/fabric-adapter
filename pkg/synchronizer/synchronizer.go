@@ -10,6 +10,7 @@ import (
 	"context"
 	"github.com/atomix/atomix-go-client/pkg/atomix"
 	models "github.com/onosproject/config-models/models/sdn-fabric-0.1.x/api"
+	"github.com/onosproject/fabric-adapter/pkg/store"
 	"github.com/onosproject/onos-lib-go/pkg/logging"
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
 	"github.com/onosproject/sdcore-adapter/pkg/metrics"
@@ -93,24 +94,6 @@ func (s *Synchronizer) GetModels() *gnmi.Model {
 	return model
 }
 
-//
-func (s *Synchronizer) setUpPrimitives(ctx context.Context) {
-	log.Warn("Getting atomix client")
-	atomixClient := atomix.NewClient(atomix.WithClientID(os.Getenv("POD_NAME")))
-	var err error
-	log.Warn("getting counter")
-	s.nextSID, err = atomixClient.GetCounter(ctx, SidCounter)
-	if err != nil {
-		log.Warnf("Error creating atomix counter: %v", err)
-		return
-	}
-	s.sidMap, err = atomixClient.GetMap(ctx, SidMap)
-	if err != nil {
-		log.Warnf("Error creating atomix map: %v", err)
-		return
-	}
-}
-
 // Start the synchronizer by launching the synchronizer loop inside a thread.
 func (s *Synchronizer) Start() {
 	log.Infof("Synchronizer starting (postEnable=%v, postTimeout=%d, retryInterval=%s, partialUpdateEnable=%v)",
@@ -119,8 +102,15 @@ func (s *Synchronizer) Start() {
 		s.retryInterval,
 		s.partialUpdateEnable)
 
+	atomixClient := atomix.NewClient(atomix.WithClientID(os.Getenv("POD_NAME")))
+
 	// TODO: Eventually we'll create a thread here that waits for config changes
-	s.setUpPrimitives(context.Background())
+	var err error
+	s.sidStore, err = store.NewAtomixStore(context.Background(), atomixClient)
+	if err != nil {
+		log.Errorf("Can't create SID store: %v", err)
+		return
+	}
 	go s.Loop()
 }
 

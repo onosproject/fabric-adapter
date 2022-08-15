@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	atomixerrors "github.com/atomix/atomix-go-framework/pkg/atomix/errors"
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
 	"github.com/pkg/errors"
 	"sort"
@@ -64,31 +63,6 @@ func (s *Synchronizer) handleSwitchPort(scope *FabricScope, p *Port) error {
 	return nil
 }
 
-// get a unique sid for the switch from atomix
-func (s *Synchronizer) getUniqueSid(ctx context.Context, switchName string) (uint32, error) {
-	log.Infof("Looking for switch %s", switchName)
-	entry, err := s.sidMap.Get(ctx, switchName)
-	if entry != nil && err == nil {
-		sid := bytesToUint32(entry.Value)
-		log.Warnf("Switch found with SID %d", sid)
-		return sid, nil
-	}
-
-	if !atomixerrors.IsNotFound(err) {
-		log.Errorf("Error getting from SID map: %v", err)
-		return 0, err
-	}
-
-	newSid, err := s.nextSID.Increment(ctx, 1)
-	if err == nil {
-		log.Infof("Allocated new SID %d", newSid)
-		sidValue := uint32ToBytes(uint32(newSid))
-
-		_, err = s.sidMap.Put(ctx, switchName, sidValue)
-	}
-	return uint32(newSid), err
-}
-
 func (s *Synchronizer) handleSwitch(ctx context.Context, scope *FabricScope) error {
 	var err error
 
@@ -97,7 +71,7 @@ func (s *Synchronizer) handleSwitch(ctx context.Context, scope *FabricScope) err
 	log.Infof("Fabric %s handling switch %s", *scope.FabricId, *sw.SwitchId)
 
 	if sw.Management == nil || sw.Management.Address == nil || sw.Management.PortNumber == nil {
-		return fmt.Errorf("Fabric %s switch %s has no management address", *scope.FabricId, *sw.SwitchId)
+		return fmt.Errorf("fabric %s switch %s has no management address", *scope.FabricId, *sw.SwitchId)
 	}
 
 	device := &onosDevice{}
@@ -109,7 +83,7 @@ func (s *Synchronizer) handleSwitch(ctx context.Context, scope *FabricScope) err
 	}
 
 	device.Basic.Driver = *driver.Value
-	device.SegmentRouting.Ipv4NodeSid, err = s.getUniqueSid(ctx, *sw.SwitchId)
+	device.SegmentRouting.Ipv4NodeSid, err = s.sidStore.Get(ctx, *sw.SwitchId)
 	if err != nil {
 		return fmt.Errorf("fabric %s switch %s unable to create SID: %s", *scope.FabricId, *sw.SwitchId, err)
 	}
@@ -132,7 +106,6 @@ func (s *Synchronizer) handleSwitch(ctx context.Context, scope *FabricScope) err
 	// Ipv4 Node Sid, Ipv4 Loopback, Router Mac, Is Edge Router, Adjacency Sids
 	device.SegmentRouting.AdjacencySids = []uint16{}
 	device.SegmentRouting.Ipv4Loopback = managementAddressToIP(*sw.Management.Address)
-	//device.SegmentRouting.Ipv4NodeSid = s.getUniqueSid(device.SegmentRouting.Ipv4Loopback) // TODO: smbaker: probably of collision is not negligible
 	device.SegmentRouting.IsEdgeRouter = sw.Role != RoleSpine
 	device.SegmentRouting.RouterMac, err = addressToMac(device.SegmentRouting.Ipv4Loopback)
 	if err != nil {

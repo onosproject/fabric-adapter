@@ -135,13 +135,6 @@ func WithPartialUpdateEnable(partialUpdateEnable bool) SynchronizerOption {
 	}
 }
 
-// WithPusher sets the pusher for pushing REST to the core or UPF
-func WithPusher(pusher PusherInterface) SynchronizerOption {
-	return func(s *Synchronizer) {
-		s.pusher = pusher
-	}
-}
-
 // WithTopoEndpoint specifies the onos-topo endpoint to use
 func WithTopoEndpoint(topoEndpoint string) SynchronizerOption {
 	return func(s *Synchronizer) {
@@ -160,11 +153,7 @@ func WithCertPaths(caPath string, keyPath string, certPath string) SynchronizerO
 
 // NewSynchronizer creates a new Synchronizer
 func NewSynchronizer(opts ...SynchronizerOption) *Synchronizer {
-	// By default, push via REST. Test infrastructure can override this.
-	p := &RESTPusher{}
-
 	s := &Synchronizer{
-		pusher:              p,
 		postEnable:          true,
 		partialUpdateEnable: DefaultPartialUpdateEnable,
 		postTimeout:         DefaultPostTimeout,

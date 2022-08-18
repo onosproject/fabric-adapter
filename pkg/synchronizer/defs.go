@@ -30,7 +30,6 @@ const (
 type Synchronizer struct {
 	postEnable          bool
 	postTimeout         time.Duration
-	pusher              PusherInterface
 	updateChannel       chan *ConfigUpdate
 	retryInterval       time.Duration
 	partialUpdateEnable bool

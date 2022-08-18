@@ -104,7 +104,7 @@ func (s *Synchronizer) handleSwitch(ctx context.Context, scope *FabricScope) err
 
 	// segmentRouting
 	// Ipv4 Node Sid, Ipv4 Loopback, Router Mac, Is Edge Router, Adjacency Sids
-	device.SegmentRouting.AdjacencySids = []uint16{}
+	device.SegmentRouting.AdjacencySids = make([]uint16, 0)
 	device.SegmentRouting.Ipv4Loopback = managementAddressToIP(*sw.Management.Address)
 	device.SegmentRouting.IsEdgeRouter = sw.Role != RoleSpine
 	device.SegmentRouting.RouterMac, err = addressToMac(device.SegmentRouting.Ipv4Loopback)
@@ -218,7 +218,8 @@ nextSwitch:
 	}
 
 	url := fmt.Sprintf("%sonos/v1/network/configuration", *scope.OnosEndpoint)
-	err = s.pusher.PushUpdate(url, *scope.OnosUsername, *scope.OnosPassword, data)
+	restPusher := NewRestPusher(url, *scope.OnosUsername, *scope.OnosPassword, data)
+	err = restPusher.PushUpdate()
 	if err != nil {
 		return 1, fmt.Errorf("Fabric %s failed to Push netconfig update: %s", *scope.FabricId, err)
 	}

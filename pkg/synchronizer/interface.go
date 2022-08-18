@@ -7,6 +7,7 @@
 package synchronizer
 
 import (
+	"fmt"
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
 	pb "github.com/openconfig/gnmi/proto/gnmi"
 )
@@ -21,6 +22,19 @@ type SynchronizerInterface interface { //nolint
 // PusherInterface is an interface to a pusher, which pushes json to underlying services.
 //go:generate mockgen -destination=../test/mocks/mock_pusher.go -package=mocks github.com/onosproject/sdcore-adapter/pkg/synchronizer PusherInterface
 type PusherInterface interface {
-	PushUpdate(endpoint string, username string, password string, data []byte) error
-	PushDelete(endpoint string) error
+	PushUpdate() error
+	PushDelete() error
+}
+
+// PushError is an error class that is returned for failed POSTs and DELETEs. It
+// makes it easier to detect a nonfatal error, such as a 404.
+type PushError struct {
+	Endpoint   string
+	StatusCode int
+	Status     string
+	Operation  string
+}
+
+func (e *PushError) Error() string {
+	return fmt.Sprintf("Push Error op=%s endpoint=%s code=%d status=%s", e.Operation, e.Endpoint, e.StatusCode, e.Status)
 }

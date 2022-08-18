@@ -9,43 +9,45 @@ package synchronizer
 
 import (
 	"bytes"
-	"fmt"
 	"net/http"
 	"time"
 )
 
-// PushError is an error class that is returned for failed POSTs and DELETEs. It
-// makes it easier to detect a nonfatal error, such as a 404.
-type PushError struct {
-	Endpoint   string
-	StatusCode int
-	Status     string
-	Operation  string
-}
-
-func (e *PushError) Error() string {
-	return fmt.Sprintf("Push Error op=%s endpoint=%s code=%d status=%s", e.Operation, e.Endpoint, e.StatusCode, e.Status)
-}
-
 // RESTPusher implements a pusher that pushes to a rest endpoint.
 type RESTPusher struct {
+	endpoint string
+	username string
+	password string
+	data     []byte
+}
+
+// NewRestPusher allocates a rest pusher for a given endpoint
+func NewRestPusher(url string, username string, password string, data []byte) PusherInterface {
+	restPusher := &RESTPusher{
+		endpoint: url,
+		username: username,
+		password: password,
+		data:     data,
+	}
+
+	return restPusher
 }
 
 // PushUpdate pushes an update to the REST endpoint.
-func (p *RESTPusher) PushUpdate(endpoint string, username string, password string, data []byte) error {
+func (p *RESTPusher) PushUpdate() error {
 
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
 
-	log.Infof("Push Update endpoint=%s data=%s", endpoint, string(data))
-	reader := bytes.NewReader(data)
-	req, err := http.NewRequest(http.MethodPost, endpoint, reader)
+	log.Infof("Push Update endpoint=%s data=%s", p.endpoint, string(p.data))
+	reader := bytes.NewReader(p.data)
+	req, err := http.NewRequest(http.MethodPost, p.endpoint, reader)
 	if err != nil {
 		return err
 	}
 
-	req.SetBasicAuth(username, password)
+	req.SetBasicAuth(p.username, p.password)
 	req.Header.Add("Content-Type", "application/json;charset=utf-8")
 	resp, err := client.Do(req)
 
@@ -62,21 +64,21 @@ func (p *RESTPusher) PushUpdate(endpoint string, username string, password strin
 	log.Infof("Put returned status %s", resp.Status)
 
 	if (resp.StatusCode < 200) || (resp.StatusCode >= 300) {
-		return &PushError{Operation: "POST", Endpoint: endpoint, StatusCode: resp.StatusCode, Status: resp.Status}
+		return &PushError{Operation: "POST", Endpoint: p.endpoint, StatusCode: resp.StatusCode, Status: resp.Status}
 	}
 
 	return nil
 }
 
 // PushDelete pushes a delete to the REST endpoint
-func (p *RESTPusher) PushDelete(endpoint string) error {
+func (p *RESTPusher) PushDelete() error {
 	client := &http.Client{
 		Timeout: time.Second * 10,
 	}
 
-	log.Infof("Push Delete endpoint=%s", endpoint)
+	log.Infof("Push Delete endpoint=%s", p.endpoint)
 
-	req, err := http.NewRequest("DELETE", endpoint, nil)
+	req, err := http.NewRequest("DELETE", p.endpoint, nil)
 	if err != nil {
 		return err
 	}
@@ -91,7 +93,7 @@ func (p *RESTPusher) PushDelete(endpoint string) error {
 	log.Infof("Delete returned status %s", resp.Status)
 
 	if (resp.StatusCode < 200) || (resp.StatusCode >= 300) {
-		return &PushError{Operation: "DELETE", Endpoint: endpoint, StatusCode: resp.StatusCode, Status: resp.Status}
+		return &PushError{Operation: "DELETE", Endpoint: p.endpoint, StatusCode: resp.StatusCode, Status: resp.Status}
 	}
 
 	return nil

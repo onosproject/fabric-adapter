@@ -15,11 +15,11 @@ type onosDevice struct {
 		Ipv4NodeSid   uint32   `json:"ipv4NodeSid,omitempty"`
 		Ipv4Loopback  string   `json:"ipv4Loopback,omitempty"`
 		RouterMac     string   `json:"routerMac,omitempty"`
-		IsEdgeRouter  bool     `json:"isEdgeRouter,omitempty"`
+		IsEdgeRouter  bool     `json:"isEdgeRouter"`
 		PairDeviceID  string   `json:"pairDeviceId,omitempty"`
 		PairLocalPort uint16   `json:"pairLocalPort,omitempty"`
-		AdjacencySids []uint16 `json:"adjacencySids,omitempty"`
-	} `json:"segmentrouting,omitempty"`
+		AdjacencySids []uint16 `json:"adjacencySids"`
+	} `json:"segmentrouting"`
 	Basic struct {
 		Name              string `json:"name"`
 		ManagementAddress string `json:"managementAddress,omitempty"`

@@ -7,6 +7,7 @@ package synchronizer
 
 import (
 	"context"
+	"fmt"
 	"github.com/atomix/atomix-go-client/pkg/atomix/test"
 	"github.com/atomix/atomix-go-client/pkg/atomix/test/rsm"
 	"github.com/onosproject/config-models/models/sdn-fabric-0.1.x/api"
@@ -36,6 +37,19 @@ var (
 	deviceTestSpineManagementPort = uint16(2346)
 )
 
+func newVlan(vlanNumber uint16, subnet string, description string) *api.OnfSwitch_Switch_Vlan {
+	vlDisplayName := fmt.Sprintf("Test Vlan %s-%d", description, vlanNumber)
+	vlDescription := fmt.Sprintf("TestVlan%s-%d", description, vlanNumber)
+	vlSubnets := []string{subnet}
+	vl := &api.OnfSwitch_Switch_Vlan{
+		Description: &vlDescription,
+		DisplayName: &vlDisplayName,
+		Subnet:      vlSubnets,
+		VlanId:      &vlanNumber,
+	}
+	return vl
+}
+
 func newSwitch(ID *string, displayName *string, description *string,
 	management *api.OnfSwitch_Switch_Management,
 	attributes map[string]*api.OnfSwitch_Switch_Attribute,
@@ -48,6 +62,46 @@ func newSwitch(ID *string, displayName *string, description *string,
 		Role:        role,
 		SwitchId:    ID,
 	}
+
+	vlTaggedID := uint16(44)
+	vlTagged := newVlan(vlTaggedID, "11.22.33.44/24", "tagged")
+
+	vlUntaggedID := uint16(55)
+	vlUntagged := newVlan(vlUntaggedID, "11.22.33.55/24", "untagged")
+
+	vlans := make(map[uint16]*api.OnfSwitch_Switch_Vlan)
+	vlans[*vlTagged.VlanId] = vlTagged
+	vlans[*vlUntagged.VlanId] = vlUntagged
+	onfSwitch.Vlan = vlans
+
+	cageNumber := uint8(2)
+	channelNumber := uint8(2)
+	portDescription := "port1"
+	portDisplayName := "Port 1"
+
+	ports := make(map[api.OnfSwitch_Switch_Port_Key]*api.OnfSwitch_Switch_Port)
+	portKey := api.OnfSwitch_Switch_Port_Key{
+		CageNumber:    cageNumber,
+		ChannelNumber: channelNumber,
+	}
+
+	taggedVlanIds := []uint16{vlTaggedID}
+	portVlans := &api.OnfSwitch_Switch_Port_Vlans{
+		Tagged:   taggedVlanIds,
+		Untagged: &vlUntaggedID,
+	}
+	port := &api.OnfSwitch_Switch_Port{
+		CageNumber:       &cageNumber,
+		ChannelNumber:    &channelNumber,
+		Description:      &portDescription,
+		DhcpConnectPoint: nil,
+		DisplayName:      &portDisplayName,
+		Speed:            0,
+		State:            nil,
+		Vlans:            portVlans,
+	}
+	ports[portKey] = port
+	onfSwitch.Port = ports
 	return &onfSwitch
 }
 
@@ -66,6 +120,29 @@ func newAttributes() map[string]*api.OnfSwitch_Switch_Attribute {
 	return attributes
 }
 
+func newTestModel() *SwitchModel {
+	description := "Model for testing"
+	displayName := "TestModel"
+	id := "test"
+	port := make(map[uint8]*api.OnfSwitchModel_SwitchModel_Port)
+	for i := uint8(1); i <= 16; i++ {
+		portDescription := fmt.Sprintf("Port %d", i)
+		port[i] = &api.OnfSwitchModel_SwitchModel_Port{
+			CageNumber:  &i,
+			Description: &portDescription,
+			DisplayName: &portDescription,
+		}
+	}
+	model := &SwitchModel{
+		Attribute:     nil,
+		Description:   &description,
+		DisplayName:   &displayName,
+		Port:          port,
+		SwitchModelId: &id,
+	}
+	return model
+}
+
 func newScope(fabricID *string, onfSwitch *Switch, netconfig *OnosNetConfig) FabricScope {
 	scope := FabricScope{
 		NetConfig: netconfig,
@@ -73,17 +150,37 @@ func newScope(fabricID *string, onfSwitch *Switch, netconfig *OnosNetConfig) Fab
 		FabricId:  fabricID,
 	}
 	scope.NetConfig.Devices = make(map[string]*onosDevice)
+	scope.NetConfig.Ports = make(map[string]*onosPort)
+	scope.SwitchModel = newTestModel()
+
 	return scope
 }
 
 // Check the segment routing data
-func checkSegmentRouting(t *testing.T, netconfDevice *onosDevice, expectedSid uint32, expectedManagementIP string, expectedIsRouter bool) {
+func checkSegmentRoutingDevice(t *testing.T, netconfDevice *onosDevice, expectedSid uint32, expectedManagementIP string, expectedIsRouter bool) {
 	assert.Equal(t, expectedSid, netconfDevice.SegmentRouting.Ipv4NodeSid)
 	assert.Equal(t, expectedManagementIP, netconfDevice.SegmentRouting.Ipv4Loopback)
 	assert.Equal(t, expectedIsRouter, netconfDevice.SegmentRouting.IsEdgeRouter)
 	expectedMac, _ := addressToMac(expectedManagementIP)
 	assert.Equal(t, expectedMac, netconfDevice.SegmentRouting.RouterMac)
 	assert.Empty(t, netconfDevice.SegmentRouting.AdjacencySids)
+}
+
+func checkSegmentRoutingPort(t *testing.T, netconf *onosPort, taggedVlan uint16, untaggedVlan uint16, expectedSubnets []string) {
+	assert.Len(t, netconf.Interfaces, 1)
+	assert.Len(t, netconf.Interfaces[0].Ips, len(expectedSubnets))
+	assert.Equal(t, untaggedVlan, netconf.Interfaces[0].VlanUntagged)
+	assert.Equal(t, taggedVlan, netconf.Interfaces[0].VlanTagged[0])
+	for _, expectedSubnet := range expectedSubnets {
+		found := false
+		for _, subnet := range netconf.Interfaces[0].Ips {
+			if subnet == expectedSubnet {
+				found = true
+				break
+			}
+		}
+		assert.Truef(t, found, "Didn't find expected subnet %s", expectedSubnet)
+	}
 }
 
 // Check the switch basic data
@@ -133,7 +230,13 @@ func TestDeviceToSegmentRouting(t *testing.T) {
 	assert.NotNil(t, netconfDevice)
 
 	// Check the segment routing data
-	checkSegmentRouting(t, netconfDevice, 1, deviceTestLeafManagementIP, true)
+	checkSegmentRoutingDevice(t, netconfDevice, 1, deviceTestLeafManagementIP, true)
+
+	port, ok := scope.NetConfig.Ports["device:leaf-one/202"]
+	assert.True(t, ok)
+	expectedSubnets := []string{"11.22.33.55/24", "11.22.33.44/24"}
+
+	checkSegmentRoutingPort(t, port, 44, 55, expectedSubnets)
 
 	// check the basic data
 	checkBasic(t, netconfDevice, deviceTestLeafDisplayName)
@@ -178,8 +281,8 @@ func TestSIDDUniqueness(t *testing.T) {
 	assert.NotNil(t, leafNetconfDevice)
 
 	// Check the segment routing data
-	checkSegmentRouting(t, leafNetconfDevice, 1, deviceTestLeafManagementIP, true)
-	checkSegmentRouting(t, spineNetconfDevice, 2, deviceTestSpineManagementIP, false)
+	checkSegmentRoutingDevice(t, leafNetconfDevice, 1, deviceTestLeafManagementIP, true)
+	checkSegmentRoutingDevice(t, spineNetconfDevice, 2, deviceTestSpineManagementIP, false)
 
 	// check the basic data
 	checkBasic(t, leafNetconfDevice, deviceTestLeafDisplayName)
@@ -192,7 +295,7 @@ func TestSIDDUniqueness(t *testing.T) {
 	spineSid := spineNetconfDevice.SegmentRouting.Ipv4NodeSid
 	assert.NoError(t, s.handleSwitch(context.Background(), &scope))
 	spineNetconfDeviceAfter := scope.NetConfig.Devices["device:"+deviceTestSpineID]
-	checkSegmentRouting(t, spineNetconfDeviceAfter, spineSid, deviceTestSpineManagementIP, false)
+	checkSegmentRoutingDevice(t, spineNetconfDeviceAfter, spineSid, deviceTestSpineManagementIP, false)
 
 	assert.Equal(t, spineSid, spineNetconfDeviceAfter.SegmentRouting.Ipv4NodeSid)
 	assert.Contains(t, spineNetconfDeviceAfter.Basic.ManagementAddress, deviceTestSpineManagementIP)

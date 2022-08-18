@@ -42,7 +42,7 @@ func (s *Synchronizer) handleSwitchPort(scope *FabricScope, p *Port) error {
 			iface.Ips = append(iface.Ips, vlan.Subnet...)
 		}
 		for _, vlanID := range p.Vlans.Tagged {
-			vlan, err := lookupSwitchVlan(sw, p.Vlans.Untagged)
+			vlan, err := lookupSwitchVlan(sw, &vlanID)
 			if err != nil {
 				return err
 			}

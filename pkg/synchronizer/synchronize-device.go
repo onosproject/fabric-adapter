@@ -7,9 +7,13 @@
 package synchronizer
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/gogo/protobuf/proto"
+	"github.com/onosproject/config-models/models/sdn-fabric-0.1.x/api"
+	"github.com/onosproject/fabric-adapter/pkg/stratum_hal"
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
 	"github.com/pkg/errors"
 	"sort"
@@ -59,6 +63,74 @@ func (s *Synchronizer) handleSwitchPort(scope *FabricScope, p *Port) error {
 
 	_ = model
 	_ = modelPort
+
+	return nil
+}
+
+func (s *Synchronizer) handleStratumSwitchPort(scope *FabricScope, p *Port) error {
+	model := scope.SwitchModel
+
+	// Make sure the port is in the model
+	_, err := lookupSwitchModelPort(model, p.CageNumber)
+	if err != nil {
+		return err
+	}
+
+	// Determine port speed
+	var autoneg = stratum_hal.TriState_TRI_STATE_FALSE
+	var speedBPS uint64
+	const gig = 1000000000
+	switch p.Speed {
+	case api.OnfSdnFabricTypes_Speed_speed_100g:
+		speedBPS = 100 * gig
+	case api.OnfSdnFabricTypes_Speed_speed_10g:
+		speedBPS = 10 * gig
+	case api.OnfSdnFabricTypes_Speed_speed_1g:
+		speedBPS = gig
+	case api.OnfSdnFabricTypes_Speed_speed_2_5g:
+		speedBPS = 2.5 * gig
+	case api.OnfSdnFabricTypes_Speed_speed_25g:
+		speedBPS = 25 * gig
+	case api.OnfSdnFabricTypes_Speed_speed_400g:
+		speedBPS = 400 * gig
+	case api.OnfSdnFabricTypes_Speed_speed_40g:
+		speedBPS = 40 * gig
+	case api.OnfSdnFabricTypes_Speed_speed_5g:
+		speedBPS = 5 * gig
+	case api.OnfSdnFabricTypes_Speed_speed_autoneg:
+		autoneg = stratum_hal.TriState_TRI_STATE_TRUE
+		speedBPS = gig // TODO make this an attribute
+	}
+
+	// port configuration parameters
+	configParams := &stratum_hal.PortConfigParams{
+		AdminState: stratum_hal.AdminState_ADMIN_STATE_ENABLED,
+		Autoneg:    autoneg,
+	}
+
+	// determine the id, slot, port and channel for the stratum model
+	slot := int32(1) // TODO if the switch has more than one line card, this will be wrong for all but the first card
+	port := int32(*p.CageNumber)
+	channel := uint32(*p.ChannelNumber)
+	var id uint32
+	if channel != 0 {
+		id = (uint32(port) * 100) + channel
+	} else {
+		id = uint32(port)
+	}
+	name := fmt.Sprintf("Port %d/%d", port, channel)
+
+	// Add the port to the stratum config
+	singletonPort := &stratum_hal.SingletonPort{
+		Id:           id,
+		Name:         name,
+		Slot:         slot,
+		Port:         port,
+		SpeedBps:     speedBPS,
+		Node:         1,
+		ConfigParams: configParams,
+	}
+	scope.StratumChassisConfig.SingletonPorts = append(scope.StratumChassisConfig.SingletonPorts, singletonPort)
 
 	return nil
 }
@@ -138,6 +210,42 @@ func (s *Synchronizer) handleSwitch(ctx context.Context, scope *FabricScope) err
 			for _, pairingPort := range sw.SwitchPair.PairingPort {
 				device.SegmentRouting.PairLocalPort = cageChannelToPort(pairingPort.CageNumber, pairingPort.ChannelNumber)
 			}
+		}
+	}
+
+	return nil
+}
+
+func (s *Synchronizer) handleStratumSwitch(scope *FabricScope) error {
+	sw := scope.Switch
+
+	log.Infof("Fabric %s handling switch %s for  stratum", *scope.FabricId, *sw.SwitchId)
+
+	if sw.Management == nil || sw.Management.Address == nil || sw.Management.PortNumber == nil {
+		return fmt.Errorf("fabric %s switch %s has no management address", *scope.FabricId, *sw.SwitchId)
+	}
+
+	scope.StratumChassisConfig.Description = *sw.DisplayName
+
+	node := stratum_hal.Node{ // TODO is this right?
+		Id:    1,
+		Slot:  1,
+		Index: 1,
+	}
+	scope.StratumChassisConfig.Nodes = []*stratum_hal.Node{&node}
+
+	scope.StratumChassisConfig.Chassis = &stratum_hal.Chassis{
+		Platform: stratum_hal.Platform_PLT_GENERIC_BAREFOOT_TOFINO,
+		Name:     *sw.DisplayName,
+	}
+
+	// Ports
+
+	for _, port := range sw.Port {
+		err := s.handleStratumSwitchPort(scope, port)
+		if err != nil {
+			// log the error and continue with next port
+			log.Warn(err)
 		}
 	}
 
@@ -229,6 +337,53 @@ nextSwitch:
 	return 0, nil
 }
 
+// SynchronizeFabricToStratum pushes a fabric to stratum switches
+func (s *Synchronizer) SynchronizeFabricToStratum(scope *FabricScope) (int, error) {
+	// be deterministic...
+	switchIDKeys := []string{}
+	for k := range scope.Fabric.Switch {
+		switchIDKeys = append(switchIDKeys, k)
+	}
+	sort.Strings(switchIDKeys)
+
+nextSwitch:
+	for _, k := range switchIDKeys {
+		var err error
+		scope.StratumChassisConfig = stratum_hal.ChassisConfig{}
+		scope.Switch = scope.Fabric.Switch[k]
+		scope.SwitchModel, err = lookupSwitchModel(scope, scope.Switch.ModelId)
+		if err != nil {
+			// log the error and continue with next switch
+			log.Warn(err)
+			continue nextSwitch
+		}
+
+		err = s.handleStratumSwitch(scope)
+		if err != nil {
+			// log the error and continue with next switch
+			log.Warn(err)
+		}
+
+		var protoStringBytes bytes.Buffer
+		err = proto.MarshalText(&protoStringBytes, &scope.StratumChassisConfig)
+		if err != nil {
+			return 1, err
+		}
+		protoString := protoStringBytes.String()
+		log.Warnf("proto string for switch %s is:\n%s\n", *scope.Switch.SwitchId, protoString)
+
+		// Push proto here
+		gnmiPusher := NewGNMIPusher("/", "/", protoString)
+		err = gnmiPusher.PushUpdate()
+
+		if err != nil {
+			return 1, err
+		}
+	}
+
+	return 0, nil
+}
+
 // SynchronizeDevice synchronizes a device. Two sets of error state are returned:
 //   1) pushFailures -- a count of pushes that failed to the core. Synchronizer should retry again later.
 //   2) error -- a fatal error that occurred during synchronization.
@@ -264,10 +419,16 @@ func (s *Synchronizer) SynchronizeDevice(ctx context.Context, allConfig *gnmi.Co
 
 		pushFailures, err := s.SynchronizeFabricToOnos(ctx, scope)
 		if err != nil {
-			log.Warnf("Failed to push fabric %s: %v", fabricID, err)
+			log.Warnf("Failed to push fabric to ONOS %s: %v", fabricID, err)
+		}
+
+		pushStratumFailures, err := s.SynchronizeFabricToStratum(scope)
+		if err != nil {
+			log.Warnf("Failed to push fabric to ONOS %s: %v", fabricID, err)
 		}
 
 		pushFailuresTotal += pushFailures
+		pushFailuresTotal += pushStratumFailures
 		KpiSynchronizationDuration.WithLabelValues(fabricID).Observe(time.Since(tStart).Seconds())
 	}
 

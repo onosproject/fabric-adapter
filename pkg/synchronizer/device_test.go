@@ -50,10 +50,29 @@ func newVlan(vlanNumber uint16, subnet string, description string) *api.OnfSwitc
 	return vl
 }
 
+func addNewPort(sw *Switch,
+	portKey api.OnfSwitch_Switch_Port_Key,
+	cageNumber uint8, channelNumber uint8,
+	portDescription string, portDisplayName string,
+	portVlans *api.OnfSwitch_Switch_Port_Vlans) {
+	port := &api.OnfSwitch_Switch_Port{
+		CageNumber:       &cageNumber,
+		ChannelNumber:    &channelNumber,
+		Description:      &portDescription,
+		DhcpConnectPoint: nil,
+		DisplayName:      &portDisplayName,
+		Speed:            0,
+		State:            nil,
+		Vlans:            portVlans,
+	}
+	sw.Port[portKey] = port
+}
+
 func newSwitch(ID *string, displayName *string, description *string,
 	management *api.OnfSwitch_Switch_Management,
 	attributes map[string]*api.OnfSwitch_Switch_Attribute,
 	role api.E_OnfSwitch_Switch_Role) *Switch {
+
 	onfSwitch := Switch{
 		Attribute:   attributes,
 		Description: description,
@@ -61,6 +80,8 @@ func newSwitch(ID *string, displayName *string, description *string,
 		Management:  management,
 		Role:        role,
 		SwitchId:    ID,
+		Port:        make(map[api.OnfSwitch_Switch_Port_Key]*api.OnfSwitch_Switch_Port),
+		Vlan:        make(map[uint16]*api.OnfSwitch_Switch_Vlan),
 	}
 
 	vlTaggedID := uint16(44)
@@ -79,7 +100,6 @@ func newSwitch(ID *string, displayName *string, description *string,
 	portDescription := "port1"
 	portDisplayName := "Port 1"
 
-	ports := make(map[api.OnfSwitch_Switch_Port_Key]*api.OnfSwitch_Switch_Port)
 	portKey := api.OnfSwitch_Switch_Port_Key{
 		CageNumber:    cageNumber,
 		ChannelNumber: channelNumber,
@@ -90,18 +110,12 @@ func newSwitch(ID *string, displayName *string, description *string,
 		Tagged:   taggedVlanIds,
 		Untagged: &vlUntaggedID,
 	}
-	port := &api.OnfSwitch_Switch_Port{
-		CageNumber:       &cageNumber,
-		ChannelNumber:    &channelNumber,
-		Description:      &portDescription,
-		DhcpConnectPoint: nil,
-		DisplayName:      &portDisplayName,
-		Speed:            0,
-		State:            nil,
-		Vlans:            portVlans,
-	}
-	ports[portKey] = port
-	onfSwitch.Port = ports
+	addNewPort(&onfSwitch, portKey,
+		cageNumber,
+		channelNumber,
+		portDescription,
+		portDisplayName,
+		portVlans)
 	return &onfSwitch
 }
 

@@ -9,6 +9,7 @@ package synchronizer
 import (
 	"context"
 	"github.com/onosproject/fabric-adapter/pkg/store"
+	"github.com/onosproject/fabric-adapter/pkg/stratum_hal"
 	"time"
 
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
@@ -72,13 +73,14 @@ type SynchronizerOption func(c *Synchronizer) // nolint
 // tree. Contexts were considered for this implementation, but rejected due to the lack of
 // static checking.
 type FabricScope struct {
-	FabricId        *string      // nolint - use EnterpriseId to match the ygot naming convention
-	Fabric          *RootDevice  // Each fabric is a configuration tree
-	Switch          *Switch      // The switch we're currently working on
-	SwitchModel     *SwitchModel // The switch model we're currently working on
-	OnosEndpoint    *string      // Endpoint of Onos to post to
-	OnosUsername    *string      // Username for authenticating to ONOS
-	OnosPassword    *string      // Password for authenticating to ONOS
-	StratumEndpoint *string      // Endpoint of Fabric to post to
-	NetConfig       *OnosNetConfig
+	FabricId             *string      // nolint - use EnterpriseId to match the ygot naming convention
+	Fabric               *RootDevice  // Each fabric is a configuration tree
+	Switch               *Switch      // The switch we're currently working on
+	SwitchModel          *SwitchModel // The switch model we're currently working on
+	OnosEndpoint         *string      // Endpoint of Onos to post to
+	OnosUsername         *string      // Username for authenticating to ONOS
+	OnosPassword         *string      // Password for authenticating to ONOS
+	StratumEndpoint      *string      // Endpoint of Fabric to post to
+	NetConfig            *OnosNetConfig
+	StratumChassisConfig stratum_hal.ChassisConfig
 }

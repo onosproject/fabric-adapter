@@ -6,15 +6,56 @@
 package synchronizer
 
 import (
-	"bytes"
-	"github.com/gogo/protobuf/proto"
 	"github.com/onosproject/config-models/models/sdn-fabric-0.1.x/api"
 	"github.com/onosproject/fabric-adapter/pkg/stratum_hal"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
+func checkStratumPort(t *testing.T, singletonPort *stratum_hal.SingletonPort, ID uint32, name string, port int32, channel int32, speedBps uint64, autonegState stratum_hal.TriState) {
+	assert.Equal(t, ID, singletonPort.Id)
+	assert.Equal(t, name, singletonPort.Name)
+	assert.Equal(t, int32(1), singletonPort.Slot)
+	assert.Equal(t, port, singletonPort.Port)
+	assert.Equal(t, channel, singletonPort.Channel)
+	assert.Equal(t, speedBps, singletonPort.SpeedBps)
+	assert.Equal(t, stratum_hal.AdminState_ADMIN_STATE_ENABLED, singletonPort.ConfigParams.AdminState)
+	assert.Equal(t, autonegState, singletonPort.ConfigParams.Autoneg)
+	assert.Equal(t, uint64(1), singletonPort.Node)
+}
+
+func findPort(t *testing.T, portID uint32, scope FabricScope) *stratum_hal.SingletonPort {
+	for _, port := range scope.StratumChassisConfig.SingletonPorts {
+		if port.Id == portID {
+			return port
+		}
+	}
+
+	assert.Failf(t, "Could not find port", "could not find port %d", portID)
+	return nil
+}
+
 func TestStratumSwitch(t *testing.T) {
+	// These test cases come from https://docs.sd-fabric.org/sdfabric-1.1/configuration/chassis.html#singleton-port
+	const (
+		cageNumber10      = uint8(1)
+		portDescription10 = "port cage 1"
+		portDisplayName10 = "Port 1/0"
+
+		cageNumber20      = uint8(2)
+		channelNumber20   = uint8(1)
+		portDescription20 = "Port cage 2/channel 0"
+		portDisplayName20 = "Port 2/0"
+
+		cageNumber23      = uint8(2)
+		channelNumber23   = uint8(3)
+		portDescription23 = "Port cage 2/channel 3"
+		portDisplayName23 = "Port 2/3"
+
+		gig        = 10e8
+		tenGig     = 10e9
+		hundredGig = 10e10
+	)
 	testAtomix, sidStore := getAtomixStore(t)
 
 	s := Synchronizer{sidStore: sidStore}
@@ -27,118 +68,56 @@ func TestStratumSwitch(t *testing.T) {
 	attributes := newAttributes()
 
 	onfSwitch := newSwitch(&deviceTestLeafID, &deviceTestLeafDisplayName, &deviceTestLeafDescription, management, attributes, RoleLeaf)
+
+	portKey23 := api.OnfSwitch_Switch_Port_Key{
+		CageNumber:    cageNumber23,
+		ChannelNumber: channelNumber23,
+	}
+
+	addNewPort(onfSwitch, portKey23,
+		cageNumber23,
+		channelNumber23,
+		portDescription23,
+		portDisplayName23,
+		api.OnfSdnFabricTypes_Speed_speed_autoneg)
+
+	portKey10 := api.OnfSwitch_Switch_Port_Key{
+		CageNumber: cageNumber10,
+	}
+
+	addNewPort(onfSwitch, portKey10,
+		cageNumber10,
+		0,
+		portDescription10,
+		portDisplayName10,
+		api.OnfSdnFabricTypes_Speed_speed_100g)
+
+	portKey20 := api.OnfSwitch_Switch_Port_Key{
+		CageNumber:    cageNumber20,
+		ChannelNumber: channelNumber20,
+	}
+
+	addNewPort(onfSwitch, portKey20,
+		cageNumber20,
+		channelNumber20,
+		portDescription20,
+		portDisplayName20,
+		api.OnfSdnFabricTypes_Speed_speed_10g)
+
 	scope := newScope(&deviceTestFabricID, onfSwitch, netconfig)
 
 	assert.NoError(t, s.handleStratumSwitch(&scope))
 
-	//singleton_ports {
-	//	id: 202
-	//	name: "2/2"
-	//	slot: 1
-	//	port: 2
-	//	channel: 3
-	//	speed_bps: 10000000000 # 10G
-	//	config_params {
-	//	admin_state: ADMIN_STATE_ENABLED
-	//	autoneg: TRI_STATE_TRUE
-	//}
-	//	node: 1
-	//}
-	assert.Len(t, scope.StratumChassisConfig.SingletonPorts, 1)
-	port202 := scope.StratumChassisConfig.SingletonPorts[0]
-	assert.Equal(t, uint32(202), port202.Id)
-	assert.Equal(t, "Port 2/2", port202.Name)
-	assert.Equal(t, int32(1), port202.Slot)
-	assert.Equal(t, int32(2), port202.Port)
-	//assert.Equal(t, 3, port202.Channel)
-	//assert.Equal(t, uint64(10000000000), port202.SpeedBps)
-	assert.Equal(t, stratum_hal.AdminState_ADMIN_STATE_ENABLED, port202.ConfigParams.AdminState)
-	//assert.Equal(t, stratum_hal.TriState_TRI_STATE_TRUE, port202.ConfigParams.Autoneg)
-	assert.Equal(t, uint64(1), port202.Node)
+	assert.Len(t, scope.StratumChassisConfig.SingletonPorts, 3)
+
+	port202 := findPort(t, 202, scope)
+	checkStratumPort(t, port202, 202, "Port 2/2", int32(cageNumber23), int32(channelNumber23), tenGig, stratum_hal.TriState_TRI_STATE_TRUE)
+
+	port1 := findPort(t, 1, scope)
+	checkStratumPort(t, port1, 1, "Port 1/0", int32(cageNumber10), 0, hundredGig, stratum_hal.TriState_TRI_STATE_FALSE)
+
+	port200 := findPort(t, 200, scope)
+	checkStratumPort(t, port200, 200, "Port 2/0", int32(cageNumber20), int32(channelNumber20), tenGig, stratum_hal.TriState_TRI_STATE_FALSE)
 
 	assert.NoError(t, testAtomix.Stop())
-}
-
-func TestStratumFormatting(t *testing.T) {
-	node1 := stratum_hal.Node{
-		Id:    1,
-		Slot:  1,
-		Index: 1,
-	}
-	configParams1 := &stratum_hal.PortConfigParams{
-		AdminState: stratum_hal.AdminState_ADMIN_STATE_ENABLED,
-		Autoneg:    stratum_hal.TriState_TRI_STATE_FALSE,
-	}
-	configParams200 := &stratum_hal.PortConfigParams{
-		AdminState: stratum_hal.AdminState_ADMIN_STATE_ENABLED,
-		Autoneg:    stratum_hal.TriState_TRI_STATE_TRUE,
-	}
-	singletonPort1 := &stratum_hal.SingletonPort{
-		Id:           1,
-		Name:         "1/0",
-		Slot:         1,
-		Port:         1,
-		SpeedBps:     100000000000,
-		Node:         1,
-		ConfigParams: configParams1,
-	}
-	singletonPort200 := &stratum_hal.SingletonPort{
-		Id:           200,
-		Name:         "2/0",
-		Slot:         1,
-		Port:         1,
-		SpeedBps:     10000000000,
-		Node:         1,
-		ConfigParams: configParams200,
-	}
-	singletonPort201 := &stratum_hal.SingletonPort{
-		Id:           201,
-		Name:         "2/1",
-		Slot:         1,
-		Port:         2,
-		Channel:      2,
-		SpeedBps:     10000000000,
-		Node:         1,
-		ConfigParams: configParams200,
-	}
-	singletonPort202 := &stratum_hal.SingletonPort{
-		Id:           202,
-		Name:         "2/2",
-		Slot:         1,
-		Port:         2,
-		Channel:      3,
-		SpeedBps:     10000000000,
-		Node:         1,
-		ConfigParams: configParams200,
-	}
-	singletonPort203 := &stratum_hal.SingletonPort{
-		Id:           203,
-		Name:         "2/3",
-		Slot:         1,
-		Port:         2,
-		Channel:      4,
-		SpeedBps:     10000000000,
-		Node:         1,
-		ConfigParams: configParams200,
-	}
-	chassisConfig := &stratum_hal.ChassisConfig{
-		Description: "Chassis config example",
-		Chassis: &stratum_hal.Chassis{
-			Platform: stratum_hal.Platform_PLT_GENERIC_BAREFOOT_TOFINO,
-			Name:     "leaf-1",
-		},
-		Nodes:                    []*stratum_hal.Node{&node1},
-		SingletonPorts:           []*stratum_hal.SingletonPort{singletonPort1, singletonPort200, singletonPort201, singletonPort202, singletonPort203},
-		TrunkPorts:               nil,
-		PortGroups:               nil,
-		VendorConfig:             nil,
-		OpticalNetworkInterfaces: nil,
-	}
-
-	var protoStringBytes bytes.Buffer
-	err := proto.MarshalText(&protoStringBytes, chassisConfig)
-	assert.NoError(t, err)
-
-	protoString := protoStringBytes.String()
-	assert.NotNil(t, protoString)
 }

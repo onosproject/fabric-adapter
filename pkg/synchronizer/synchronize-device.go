@@ -79,7 +79,7 @@ func (s *Synchronizer) handleStratumSwitchPort(scope *FabricScope, p *Port) erro
 	// Determine port speed
 	var autoneg = stratum_hal.TriState_TRI_STATE_FALSE
 	var speedBPS uint64
-	const gig = 1000000000
+	const gig = 10e8
 	switch p.Speed {
 	case api.OnfSdnFabricTypes_Speed_speed_100g:
 		speedBPS = 100 * gig
@@ -99,7 +99,7 @@ func (s *Synchronizer) handleStratumSwitchPort(scope *FabricScope, p *Port) erro
 		speedBPS = 5 * gig
 	case api.OnfSdnFabricTypes_Speed_speed_autoneg:
 		autoneg = stratum_hal.TriState_TRI_STATE_TRUE
-		speedBPS = gig // TODO make this an attribute
+		speedBPS = 10 * gig // TODO make this an attribute
 	}
 
 	// port configuration parameters
@@ -113,12 +113,15 @@ func (s *Synchronizer) handleStratumSwitchPort(scope *FabricScope, p *Port) erro
 	port := int32(*p.CageNumber)
 	channel := uint32(*p.ChannelNumber)
 	var id uint32
+	var name string
+
 	if channel != 0 {
-		id = (uint32(port) * 100) + channel
+		id = (uint32(port) * 100) + (channel - 1)
+		name = fmt.Sprintf("Port %d/%d", port, channel-1)
 	} else {
 		id = uint32(port)
+		name = fmt.Sprintf("Port %d/0", port)
 	}
-	name := fmt.Sprintf("Port %d/%d", port, channel)
 
 	// Add the port to the stratum config
 	singletonPort := &stratum_hal.SingletonPort{
@@ -126,6 +129,7 @@ func (s *Synchronizer) handleStratumSwitchPort(scope *FabricScope, p *Port) erro
 		Name:         name,
 		Slot:         slot,
 		Port:         port,
+		Channel:      int32(channel),
 		SpeedBps:     speedBPS,
 		Node:         1,
 		ConfigParams: configParams,

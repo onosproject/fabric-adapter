@@ -53,19 +53,35 @@ func newVlan(vlanNumber uint16, subnet string, description string) *api.OnfSwitc
 func addNewPort(sw *Switch,
 	portKey api.OnfSwitch_Switch_Port_Key,
 	cageNumber uint8, channelNumber uint8,
-	portDescription string, portDisplayName string,
-	portVlans *api.OnfSwitch_Switch_Port_Vlans) {
+	portDescription string, portDisplayName string, portSpeed api.E_OnfSdnFabricTypes_Speed) *api.OnfSwitch_Switch_Port {
 	port := &api.OnfSwitch_Switch_Port{
 		CageNumber:       &cageNumber,
 		ChannelNumber:    &channelNumber,
 		Description:      &portDescription,
 		DhcpConnectPoint: nil,
 		DisplayName:      &portDisplayName,
-		Speed:            0,
+		Speed:            portSpeed,
 		State:            nil,
-		Vlans:            portVlans,
 	}
 	sw.Port[portKey] = port
+	return port
+}
+
+func addNewVlan(onfSwitch *api.OnfSwitch_Switch, port *api.OnfSwitch_Switch_Port) {
+	vlTaggedID := uint16(44)
+	vlTagged := newVlan(vlTaggedID, "11.22.33.44/24", "tagged")
+
+	vlUntaggedID := uint16(55)
+	vlUntagged := newVlan(vlUntaggedID, "11.22.33.55/24", "untagged")
+
+	onfSwitch.Vlan[*vlTagged.VlanId] = vlTagged
+	onfSwitch.Vlan[*vlUntagged.VlanId] = vlUntagged
+
+	taggedVlanIds := []uint16{vlTaggedID}
+	port.Vlans = &api.OnfSwitch_Switch_Port_Vlans{
+		Tagged:   taggedVlanIds,
+		Untagged: &vlUntaggedID,
+	}
 }
 
 func newSwitch(ID *string, displayName *string, description *string,
@@ -83,39 +99,6 @@ func newSwitch(ID *string, displayName *string, description *string,
 		Port:        make(map[api.OnfSwitch_Switch_Port_Key]*api.OnfSwitch_Switch_Port),
 		Vlan:        make(map[uint16]*api.OnfSwitch_Switch_Vlan),
 	}
-
-	vlTaggedID := uint16(44)
-	vlTagged := newVlan(vlTaggedID, "11.22.33.44/24", "tagged")
-
-	vlUntaggedID := uint16(55)
-	vlUntagged := newVlan(vlUntaggedID, "11.22.33.55/24", "untagged")
-
-	vlans := make(map[uint16]*api.OnfSwitch_Switch_Vlan)
-	vlans[*vlTagged.VlanId] = vlTagged
-	vlans[*vlUntagged.VlanId] = vlUntagged
-	onfSwitch.Vlan = vlans
-
-	cageNumber := uint8(2)
-	channelNumber := uint8(2)
-	portDescription := "port1"
-	portDisplayName := "Port 1"
-
-	portKey := api.OnfSwitch_Switch_Port_Key{
-		CageNumber:    cageNumber,
-		ChannelNumber: channelNumber,
-	}
-
-	taggedVlanIds := []uint16{vlTaggedID}
-	portVlans := &api.OnfSwitch_Switch_Port_Vlans{
-		Tagged:   taggedVlanIds,
-		Untagged: &vlUntaggedID,
-	}
-	addNewPort(&onfSwitch, portKey,
-		cageNumber,
-		channelNumber,
-		portDescription,
-		portDisplayName,
-		portVlans)
 	return &onfSwitch
 }
 
@@ -221,6 +204,26 @@ func getAtomixStore(t *testing.T) (*test.Test, store.SIDStore) {
 	return testAtomix, sidStore
 }
 
+func addPortsAndVlans(onfSwitch *api.OnfSwitch_Switch) {
+	cageNumber := uint8(2)
+	channelNumber := uint8(2)
+	portDescription := "port1"
+	portDisplayName := "Port 1"
+
+	portKey := api.OnfSwitch_Switch_Port_Key{
+		CageNumber:    cageNumber,
+		ChannelNumber: channelNumber,
+	}
+
+	port := addNewPort(onfSwitch, portKey,
+		cageNumber,
+		channelNumber,
+		portDescription,
+		portDisplayName,
+		api.OnfSdnFabricTypes_Speed_speed_10g)
+	addNewVlan(onfSwitch, port)
+}
+
 // TestDeviceToSegmentRouting tests conversion of a switch to a segment routing payload
 func TestDeviceToSegmentRouting(t *testing.T) {
 	testAtomix, sidStore := getAtomixStore(t)
@@ -235,6 +238,7 @@ func TestDeviceToSegmentRouting(t *testing.T) {
 	attributes := newAttributes()
 
 	onfSwitch := newSwitch(&deviceTestLeafID, &deviceTestLeafDisplayName, &deviceTestLeafDescription, management, attributes, RoleLeaf)
+	addPortsAndVlans(onfSwitch)
 	scope := newScope(&deviceTestFabricID, onfSwitch, netconfig)
 
 	assert.NoError(t, s.handleSwitch(context.Background(), &scope))

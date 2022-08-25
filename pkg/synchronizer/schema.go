@@ -107,8 +107,3 @@ type OnosConfig struct {
 	ComponentConfig map[string]OnosComponentConfig `json:"componentConfig"`
 	NetConfig       OnosNetConfig                  `json:"netcfg"`
 }
-
-// ChassisConfig JSON Schema for onos chassis config
-type ChassisConfig struct {
-	// TODO: populate
-}

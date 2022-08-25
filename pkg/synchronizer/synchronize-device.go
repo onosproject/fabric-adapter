@@ -377,7 +377,7 @@ nextSwitch:
 		log.Warnf("proto string for switch %s is:\n%s\n", *scope.Switch.SwitchId, protoString)
 
 		// Push proto here
-		gnmiPusher := NewGNMIPusher("/", "/", protoString)
+		gnmiPusher := NewGNMIPusher("/", "stratum", protoString)
 		err = gnmiPusher.PushUpdate()
 
 		if err != nil {

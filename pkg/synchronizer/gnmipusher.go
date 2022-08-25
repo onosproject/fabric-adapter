@@ -14,6 +14,8 @@ import (
 	"os"
 )
 
+var gnmiPushClient Client = &client{}
+
 // GNMIPusher implements a pusher that pushes to a gnmi endpoint.
 type GNMIPusher struct {
 	endpoint   string
@@ -35,7 +37,7 @@ const (
 
 // NewGNMIPusher allocates a gnmi pusher for a given endpoint
 func NewGNMIPusher(url string, target string, payload string) PusherInterface {
-	return NewGNMIPusherWithClient(url, payload, target, &client{})
+	return NewGNMIPusherWithClient(url, target, payload, gnmiPushClient)
 }
 
 // NewGNMIPusherWithClient allocates a gnmi pusher for a given endpoint
@@ -62,7 +64,7 @@ func (p *GNMIPusher) PushUpdate() error {
 	path := &gnmiapi.Path{
 		Origin: "",
 		Elem:   es,
-		Target: p.target,
+		//Target: p.target,
 	}
 	tv := &gnmiapi.TypedValue{
 		Value: &gnmiapi.TypedValue_StringVal{

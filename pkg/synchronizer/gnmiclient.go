@@ -9,11 +9,17 @@ package synchronizer
 
 import (
 	"context"
+	"crypto/tls"
+	"github.com/onosproject/onos-lib-go/pkg/certs"
 	"github.com/onosproject/onos-lib-go/pkg/errors"
 	baseClient "github.com/openconfig/gnmi/client"
 	gclient "github.com/openconfig/gnmi/client/gnmi"
 	gpb "github.com/openconfig/gnmi/proto/gnmi"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"io"
+	"math"
+	"time"
 )
 
 // Client gNMI client interface
@@ -66,9 +72,67 @@ func (c *client) Get(ctx context.Context, req *gpb.GetRequest) (*gpb.GetResponse
 	return getResponse, errors.FromGRPC(err)
 }
 
+//////
+// Testing hack
+/////
+
+func getClientCredentials() (*tls.Config, error) {
+	cert, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
+	if err != nil {
+		return nil, err
+	}
+	return &tls.Config{
+		Certificates:       []tls.Certificate{cert},
+		InsecureSkipVerify: true,
+	}, nil
+}
+
+const (
+	onosConfigName = "onos-config"
+	onosConfigPort = "5150"
+	onosConfig     = onosConfigName + ":" + onosConfigPort
+)
+
+// GetOnosConfigDestination returns a gnmi Destination for the onos-config service
+func GetOnosConfigDestination() (baseClient.Destination, error) {
+	creds, err := getClientCredentials()
+	if err != nil {
+		return baseClient.Destination{}, err
+	}
+
+	return baseClient.Destination{
+		Addrs:   []string{onosConfig},
+		Target:  onosConfigName,
+		TLS:     creds,
+		Timeout: 10 * time.Second,
+	}, nil
+}
+
 // Set calls gnmi Set RPC
 func (c *client) Set(ctx context.Context, req *gpb.SetRequest) (*gpb.SetResponse, error) {
+	log.Warn("client.Set()")
+	dest, err := GetOnosConfigDestination()
+	if err != nil {
+		log.Error("Unable to get onos destination", err)
+	}
+	opts := []grpc.DialOption{grpc.WithBlock()}
+	//opts = append(opts, grpc.WithInsecure())
+	opts = append(opts, grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(math.MaxInt32)))
+	opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(dest.TLS)))
+	log.Warn("dialing")
+	conn, err := grpc.DialContext(ctx, dest.Addrs[0], opts...)
+	if err != nil {
+		log.Error("Unable to dial grpc", err)
+	}
+	log.Warn("NewFromConn()")
+	client, err := gclient.NewFromConn(ctx, conn, dest)
+	if err != nil {
+		log.Error("Unable to make client", err)
+	}
+	c.client = client
+	log.Warnf("Sending set request %v", req)
 	setResponse, err := c.client.Set(ctx, req)
+	log.Warnf("gnmi set operation finished, result is %v", setResponse)
 	return setResponse, errors.FromGRPC(err)
 }
 

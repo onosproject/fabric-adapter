@@ -10,6 +10,7 @@ export CGO_ENABLED=1
 export GO111MODULE=on
 
 .PHONY: build
+PLATFORM ?= --platform linux/x86_64
 
 VERSION                     ?= $(shell cat ./VERSION)
 ONOS_PROTOC_VERSION         := v1.2.1
@@ -62,7 +63,7 @@ jenkins-test: build deps license linters images jenkins-tools
 	TEST_PACKAGES=`go list github.com/onosproject/fabric-adapter/...` ./build/build-tools/build/jenkins/make-unit
 
 fabric-adapter-docker:
-	docker build . -f Dockerfile \
+	docker build ${PLATFORM} . -f Dockerfile \
 	$(DOCKER_BUILD_ARGS) \
 	-t ${DOCKER_REPOSITORY}fabric-adapter:${FABRIC_ADAPTER_VERSION}
 

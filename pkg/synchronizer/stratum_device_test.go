@@ -123,9 +123,12 @@ func TestStratumSwitch(t *testing.T) {
 	assert.NoError(t, testAtomix.Stop())
 }
 
+func testGNMIClientFactory(dest string, target string, secure bool) Client {
+	return &testClient{expectedStatus: http.StatusOK}
+}
+
 func TestGNMI(t *testing.T) {
-	cl := testClient{expectedStatus: http.StatusOK}
-	gnmiPushClient = &cl
+	GnmiPushClientFactory = testGNMIClientFactory
 	testAtomix, sidStore := getAtomixStore(t)
 
 	s := Synchronizer{sidStore: sidStore}

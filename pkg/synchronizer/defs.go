@@ -81,6 +81,7 @@ type FabricScope struct {
 	OnosUsername         *string      // Username for authenticating to ONOS
 	OnosPassword         *string      // Password for authenticating to ONOS
 	StratumEndpoint      *string      // Endpoint of Fabric to post to
+	SecureTransport      bool         // Is the current switch using secure transport
 	NetConfig            *OnosNetConfig
 	StratumChassisConfig stratum_hal.ChassisConfig
 }

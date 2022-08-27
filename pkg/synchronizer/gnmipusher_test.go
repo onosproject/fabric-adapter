@@ -42,7 +42,7 @@ func (*testClient) Close() error                                            { re
 // TestGNMIPush tests that the proper payload is posted by the pusher
 func TestGNMIPush(t *testing.T) {
 	tc := &testClient{expectedStatus: http.StatusOK}
-	pusher := NewGNMIPusherWithClient("someURL", "stratum", "somepayload", tc)
+	pusher := NewGNMIPusherWithClient("someURL", "stratum", "somepayload", "path", tc)
 	assert.NoError(t, pusher.PushUpdate())
 	assert.Contains(t, tc.payload, "val:{string_val:\"somepayload\"")
 }
@@ -50,7 +50,7 @@ func TestGNMIPush(t *testing.T) {
 // TestGNMIPusherError tests that a POST operation that the pusher properly handles an HTTP error on the POST operation
 func TestGNMIPushError(t *testing.T) {
 	tc := &testClient{expectedStatus: http.StatusForbidden}
-	pusher := NewGNMIPusherWithClient("someURL", "stratum", "somepayload", tc)
+	pusher := NewGNMIPusherWithClient("someURL", "stratum", "somepayload", "path", tc)
 	err := pusher.PushUpdate()
 	assert.Error(t, err)
 	pushError := err.(*PushError)

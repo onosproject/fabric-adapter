@@ -67,7 +67,7 @@ func (s *Synchronizer) SynchronizeAndRetry(ctx context.Context, update *ConfigUp
 	}
 }
 
-// Loop runs an infitite loop servicing synchronization requests.
+// Loop runs an infinite loop servicing synchronization requests.
 func (s *Synchronizer) Loop() {
 	log.Infof("Starting synchronizer loop")
 	for {

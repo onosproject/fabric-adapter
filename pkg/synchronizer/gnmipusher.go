@@ -14,39 +14,49 @@ import (
 	"os"
 )
 
-var gnmiPushClient Client = &client{}
+// GnmiPushClientFactory is used to create the underlying GNMI clients. Overridden by tests
+var GnmiPushClientFactory = newClient
 
 // GNMIPusher implements a pusher that pushes to a gnmi endpoint.
 type GNMIPusher struct {
 	endpoint   string
+	path       string
 	payload    string
 	target     string
 	pushClient Client
 }
 
 const (
-	// StringVal :
-	StringVal = "string_val"
+	// SecureConnection : use a certificate secured connection
+	SecureConnection = true
 
-	// IntVal :
-	IntVal = "int_val"
-
-	// BoolVal :
-	BoolVal = "bool_val"
+	// InsecureConnection : use a plain text connection
+	InsecureConnection = false
 )
 
+func newClient(dest string, target string, secure bool) Client {
+	gpc := &client{
+		dest:   dest,
+		secure: secure,
+		target: target,
+	}
+	return gpc
+}
+
 // NewGNMIPusher allocates a gnmi pusher for a given endpoint
-func NewGNMIPusher(url string, target string, payload string) PusherInterface {
-	return NewGNMIPusherWithClient(url, target, payload, gnmiPushClient)
+func NewGNMIPusher(url string, target string, payload string, path string, secureConnection bool) PusherInterface {
+	gpc := GnmiPushClientFactory(url, target, secureConnection)
+	return NewGNMIPusherWithClient(url, target, payload, path, gpc)
 }
 
 // NewGNMIPusherWithClient allocates a gnmi pusher for a given endpoint
-func NewGNMIPusherWithClient(url string, target string, payload string, pushClient Client) PusherInterface {
+func NewGNMIPusherWithClient(url string, target string, payload string, path string, pushClient Client) PusherInterface {
 	gnmiPusher := &GNMIPusher{
 		endpoint:   url,
 		pushClient: pushClient,
 		payload:    payload,
 		target:     target,
+		path:       path,
 	}
 
 	return gnmiPusher
@@ -64,7 +74,7 @@ func (p *GNMIPusher) PushUpdate() error {
 	path := &gnmiapi.Path{
 		Origin: "",
 		Elem:   es,
-		//Target: p.target,
+		Target: p.target,
 	}
 	tv := &gnmiapi.TypedValue{
 		Value: &gnmiapi.TypedValue_StringVal{

@@ -17,6 +17,7 @@ import (
 	"github.com/onosproject/sdcore-adapter/pkg/gnmi"
 	"github.com/pkg/errors"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -175,7 +176,7 @@ func (s *Synchronizer) handleSwitch(ctx context.Context, scope *FabricScope) err
 		return errors.New("switch pipeconf attribute must be specified")
 	}
 	device.Basic.PipeConf = *pipeconf.Value
-	device.Basic.ManagementAddress = fmt.Sprintf("grpc://%s:%d?device_id=1", *sw.Management.Address, *sw.Management.PortNumber)
+	device.Basic.ManagementAddress = fmt.Sprintf("%s:%d", *sw.Management.Address, *sw.Management.PortNumber)
 	// omit for now: locType, gridX, gridY
 
 	// segmentRouting
@@ -341,6 +342,18 @@ nextSwitch:
 	return 0, nil
 }
 
+func useSecureTransport(sw *Switch) bool {
+	secureTransportString, ok := sw.Attribute["secure-transport"]
+	if !ok {
+		return InsecureConnection
+	}
+	secureTransport, err := strconv.ParseBool(*secureTransportString.Value)
+	if err != nil {
+		return InsecureConnection
+	}
+	return secureTransport
+}
+
 // SynchronizeFabricToStratum pushes a fabric to stratum switches
 func (s *Synchronizer) SynchronizeFabricToStratum(scope *FabricScope) (int, error) {
 	// be deterministic...
@@ -362,6 +375,8 @@ nextSwitch:
 			continue nextSwitch
 		}
 
+		scope.SecureTransport = useSecureTransport(scope.Switch)
+
 		err = s.handleStratumSwitch(scope)
 		if err != nil {
 			// log the error and continue with next switch
@@ -376,8 +391,10 @@ nextSwitch:
 		protoString := protoStringBytes.String()
 		log.Warnf("proto string for switch %s is:\n%s\n", *scope.Switch.SwitchId, protoString)
 
-		// Push proto here
-		gnmiPusher := NewGNMIPusher("/", "/", protoString)
+		// Push proto
+		stratumURI := fmt.Sprintf("%s:%d", *scope.Switch.Management.Address, *scope.Switch.Management.PortNumber)
+		log.Warnf("stratum URI %s", stratumURI)
+		gnmiPusher := NewGNMIPusher(stratumURI, "stratum", protoString, "/", scope.SecureTransport)
 		err = gnmiPusher.PushUpdate()
 
 		if err != nil {
@@ -407,6 +424,7 @@ func (s *Synchronizer) SynchronizeDevice(ctx context.Context, allConfig *gnmi.Co
 		KpiSynchronizationTotal.WithLabelValues(fabricID).Inc()
 
 		uri := fmt.Sprintf("http://%s:%d/", controllerInfo.ControlEndpoint.Address, controllerInfo.ControlEndpoint.Port)
+
 		log.Info("controller uri: %s", uri)
 		scope := &FabricScope{
 			FabricId:        &fabricID,
@@ -419,7 +437,9 @@ func (s *Synchronizer) SynchronizeDevice(ctx context.Context, allConfig *gnmi.Co
 				Devices: map[string]*onosDevice{},
 				Ports:   map[string]*onosPort{},
 				Apps:    map[string]*onosApp{},
-			}}
+			},
+			SecureTransport: false,
+		}
 
 		pushFailures, err := s.SynchronizeFabricToOnos(ctx, scope)
 		if err != nil {

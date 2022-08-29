@@ -13,7 +13,6 @@ import (
 	"github.com/onosproject/config-models/models/sdn-fabric-0.1.x/api"
 	"github.com/onosproject/fabric-adapter/pkg/store"
 	"github.com/stretchr/testify/assert"
-	"strings"
 	"testing"
 )
 
@@ -185,7 +184,6 @@ func checkBasic(t *testing.T, netconfDevice *onosDevice, displayName string) {
 	assert.Equal(t, displayName, netconfDevice.Basic.Name)
 	assert.Equal(t, deviceTestPipeconfValue, netconfDevice.Basic.PipeConf)
 	assert.Equal(t, deviceTestDriverValue, netconfDevice.Basic.Driver)
-	assert.True(t, strings.HasPrefix(netconfDevice.Basic.ManagementAddress, "grpc:"))
 }
 
 func getAtomixStore(t *testing.T) (*test.Test, store.SIDStore) {

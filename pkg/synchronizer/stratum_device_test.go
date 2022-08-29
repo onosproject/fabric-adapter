@@ -9,6 +9,7 @@ import (
 	"github.com/onosproject/config-models/models/sdn-fabric-0.1.x/api"
 	"github.com/onosproject/fabric-adapter/pkg/stratum_hal"
 	"github.com/stretchr/testify/assert"
+	"net/http"
 	"testing"
 )
 
@@ -118,6 +119,62 @@ func TestStratumSwitch(t *testing.T) {
 
 	port200 := findPort(t, 200, scope)
 	checkStratumPort(t, port200, 200, "Port 2/0", int32(cageNumber20), int32(channelNumber20), tenGig, stratum_hal.TriState_TRI_STATE_FALSE)
+
+	assert.NoError(t, testAtomix.Stop())
+}
+
+func testGNMIClientFactory(dest string, target string, secure bool) Client {
+	return &testClient{expectedStatus: http.StatusOK}
+}
+
+func TestGNMI(t *testing.T) {
+	GnmiPushClientFactory = testGNMIClientFactory
+	testAtomix, sidStore := getAtomixStore(t)
+
+	s := Synchronizer{sidStore: sidStore}
+
+	netconfig := &OnosNetConfig{}
+	management := &api.OnfSwitch_Switch_Management{
+		Address:    &deviceTestLeafManagementIP,
+		PortNumber: &deviceTestLeafManagementPort,
+	}
+	attributes := newAttributes()
+	onfSwitch := newSwitch(&deviceTestLeafID, &deviceTestLeafDisplayName, &deviceTestLeafDescription, management, attributes, RoleLeaf)
+
+	portKey := api.OnfSwitch_Switch_Port_Key{
+		CageNumber:    5,
+		ChannelNumber: 9,
+	}
+
+	addNewPort(onfSwitch, portKey,
+		5,
+		9,
+		"port description",
+		"port display name",
+		api.OnfSdnFabricTypes_Speed_speed_100g)
+
+	scope := newScope(&deviceTestFabricID, onfSwitch, netconfig)
+	sw := make(map[string]*api.OnfSwitch_Switch)
+	onfSwitch.ModelId = scope.SwitchModel.SwitchModelId
+	sw[*onfSwitch.SwitchId] = onfSwitch
+	scope.Fabric = &RootDevice{
+		Switch: sw,
+	}
+	switchModelID := "test"
+	switchModel := SwitchModel{
+		Attribute:     nil,
+		Description:   nil,
+		DisplayName:   nil,
+		Pipeline:      0,
+		Port:          nil,
+		SwitchModelId: &switchModelID,
+	}
+	scope.Fabric.Switch = sw
+	scope.Fabric.SwitchModel = make(map[string]*api.OnfSwitchModel_SwitchModel)
+	scope.Fabric.SwitchModel["test"] = &switchModel
+	errorCount, err := s.SynchronizeFabricToStratum(&scope)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, errorCount)
 
 	assert.NoError(t, testAtomix.Stop())
 }

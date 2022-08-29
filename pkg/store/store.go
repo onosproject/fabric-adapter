@@ -36,6 +36,19 @@ func NewAtomixStore(ctx context.Context, atomixClient atomix.Client) (SIDStore, 
 		log.Warnf("Error creating atomix counter: %v", err)
 		return nil, err
 	}
+	startingValue, err := nextSID.Get(ctx)
+	if err != nil {
+		log.Warnf("Error querying atomix counter: %v", err)
+		return nil, err
+	}
+	if startingValue < 100 {
+		// Reserve the first 100 SIDs for segment routing
+		err = nextSID.Set(ctx, 100)
+		if err != nil {
+			log.Warnf("Error initializing atomix counter: %v", err)
+			return nil, err
+		}
+	}
 	sidMap, err := atomixClient.GetMap(ctx, SidMap)
 	if err != nil {
 		log.Warnf("Error creating atomix map: %v", err)

@@ -248,7 +248,7 @@ func TestDeviceToSegmentRouting(t *testing.T) {
 	assert.NotNil(t, netconfDevice)
 
 	// Check the segment routing data
-	checkSegmentRoutingDevice(t, netconfDevice, 1, deviceTestLeafManagementIP, true)
+	checkSegmentRoutingDevice(t, netconfDevice, 101, deviceTestLeafManagementIP, true)
 
 	port, ok := scope.NetConfig.Ports["device:leaf-one/202"]
 	assert.True(t, ok)
@@ -299,8 +299,8 @@ func TestSIDDUniqueness(t *testing.T) {
 	assert.NotNil(t, leafNetconfDevice)
 
 	// Check the segment routing data
-	checkSegmentRoutingDevice(t, leafNetconfDevice, 1, deviceTestLeafManagementIP, true)
-	checkSegmentRoutingDevice(t, spineNetconfDevice, 2, deviceTestSpineManagementIP, false)
+	checkSegmentRoutingDevice(t, leafNetconfDevice, 101, deviceTestLeafManagementIP, true)
+	checkSegmentRoutingDevice(t, spineNetconfDevice, 102, deviceTestSpineManagementIP, false)
 
 	// check the basic data
 	checkBasic(t, leafNetconfDevice, deviceTestLeafDisplayName)

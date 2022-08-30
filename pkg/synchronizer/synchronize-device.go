@@ -100,7 +100,15 @@ func (s *Synchronizer) handleStratumSwitchPort(scope *FabricScope, p *Port) erro
 		speedBPS = 5 * gig
 	case api.OnfSdnFabricTypes_Speed_speed_autoneg:
 		autoneg = stratum_hal.TriState_TRI_STATE_TRUE
-		speedBPS = 10 * gig // TODO make this an attribute
+		startingBPS, ok := scope.SwitchModel.Attribute["autoneg-starting-bandwidth"]
+		if ok {
+			speedBPS, err = strconv.ParseUint(*startingBPS.Value, 10, 64)
+			if err != nil {
+				return err
+			}
+		} else {
+			speedBPS = 10 * gig
+		}
 	}
 
 	// port configuration parameters
@@ -176,7 +184,7 @@ func (s *Synchronizer) handleSwitch(ctx context.Context, scope *FabricScope) err
 		return errors.New("switch pipeconf attribute must be specified")
 	}
 	device.Basic.PipeConf = *pipeconf.Value
-	device.Basic.ManagementAddress = fmt.Sprintf("%s:%d", *sw.Management.Address, *sw.Management.PortNumber)
+	device.Basic.ManagementAddress = fmt.Sprintf("grpc://%s:%d?device_id=1", *sw.Management.Address, *sw.Management.PortNumber)
 	// omit for now: locType, gridX, gridY
 
 	// segmentRouting

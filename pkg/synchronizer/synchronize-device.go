@@ -184,7 +184,7 @@ func (s *Synchronizer) handleSwitch(ctx context.Context, scope *FabricScope) err
 		return errors.New("switch pipeconf attribute must be specified")
 	}
 	device.Basic.PipeConf = *pipeconf.Value
-	device.Basic.ManagementAddress = fmt.Sprintf("grpc://%s:%d?device_id=1", *sw.Management.Address, *sw.Management.PortNumber)
+	device.Basic.ManagementAddress = getStratumEndpointForNetcfg(*sw.Management.Address, *sw.Management.PortNumber)
 	// omit for now: locType, gridX, gridY
 
 	// segmentRouting
@@ -400,9 +400,9 @@ nextSwitch:
 		log.Warnf("proto string for switch %s is:\n%s\n", *scope.Switch.SwitchId, protoString)
 
 		// Push proto
-		stratumURI := fmt.Sprintf("%s:%d", *scope.Switch.Management.Address, *scope.Switch.Management.PortNumber)
+		stratumURI := getStratumEndpoint(*scope.Switch.Management.Address, *scope.Switch.Management.PortNumber)
 		log.Warnf("stratum URI %s", stratumURI)
-		gnmiPusher := NewGNMIPusher(stratumURI, "stratum", protoString, "/", scope.SecureTransport)
+		gnmiPusher := NewGNMIPusher(stratumURI, "", protoString, "", scope.SecureTransport)
 		err = gnmiPusher.PushUpdate()
 
 		if err != nil {

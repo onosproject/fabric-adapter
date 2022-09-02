@@ -140,3 +140,13 @@ func managementAddressToIP(address string) string {
 	nextIP++
 	return retval
 }
+
+func getStratumEndpoint(addr string, port uint16) string {
+	endpoint := fmt.Sprintf("%s:%d", addr, port)
+	return endpoint
+}
+
+func getStratumEndpointForNetcfg(addr string, port uint16) string {
+	endpoint := fmt.Sprintf("grpc://%s:%d?device_id=1", addr, port)
+	return endpoint
+}

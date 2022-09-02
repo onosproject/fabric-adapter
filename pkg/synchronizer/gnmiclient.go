@@ -40,19 +40,23 @@ type client struct {
 	target string
 }
 
-func getClientCredentials() (*tls.Config, error) {
-	cert, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
-	if err != nil {
-		return nil, err
+func getClientCredentials(useSecure bool) (*tls.Config, error) {
+	if useSecure {
+		cert, err := tls.X509KeyPair([]byte(certs.DefaultClientCrt), []byte(certs.DefaultClientKey))
+		if err != nil {
+			return nil, err
+		}
+		return &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: true,
+		}, nil
+	} else {
+		return nil, nil
 	}
-	return &tls.Config{
-		Certificates:       []tls.Certificate{cert},
-		InsecureSkipVerify: true,
-	}, nil
 }
 
-func (c *client) getDestination() (baseClient.Destination, error) {
-	creds, err := getClientCredentials()
+func (c *client) getDestination(useSecure bool) (baseClient.Destination, error) {
+	creds, err := getClientCredentials(useSecure)
 	if err != nil {
 		return baseClient.Destination{}, err
 	}
@@ -66,7 +70,7 @@ func (c *client) getDestination() (baseClient.Destination, error) {
 }
 
 func (c *client) getGNMIClient(ctx context.Context) *gclient.Client {
-	dest, err := c.getDestination()
+	dest, err := c.getDestination(c.secure)
 	if err != nil {
 		log.Error("Unable to get onos destination", err)
 	}
@@ -110,6 +114,7 @@ func (c *client) Capabilities(ctx context.Context, req *gpb.CapabilityRequest) (
 // Get calls gnmi Get RPC
 func (c *client) Get(ctx context.Context, req *gpb.GetRequest) (*gpb.GetResponse, error) {
 	getResponse, err := c.client.Get(ctx, req)
+	_ = c.client.Close()
 	return getResponse, errors.FromGRPC(err)
 }
 
@@ -120,6 +125,7 @@ func (c *client) Set(ctx context.Context, req *gpb.SetRequest) (*gpb.SetResponse
 	c.client = c.getGNMIClient(ctx)
 	log.Warnf("Sending set request %v", req)
 	setResponse, err := c.client.Set(ctx, req)
+	_ = c.client.Close()
 	log.Warnf("gnmi set operation finished, result is %v", setResponse)
 	return setResponse, errors.FromGRPC(err)
 }

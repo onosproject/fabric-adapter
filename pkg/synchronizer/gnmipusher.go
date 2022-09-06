@@ -65,14 +65,16 @@ func NewGNMIPusherWithClient(url string, target string, payload string, path str
 func (p *GNMIPusher) PushUpdate() error {
 	setGnmiRequest := &gnmiapi.SetRequest{}
 
-	// update:{path:{elem:{name:"someURL"} target:"stratum"} val:{string_val:"somepayload"}}
-	//e := &gnmiapi.PathElem{
-	//	Name: p.path,
-	//}
-	//es := []*gnmiapi.PathElem{e}
+	var es []*gnmiapi.PathElem
+	if p.path != "" {
+		e := &gnmiapi.PathElem{
+			Name: p.path,
+		}
+		es = []*gnmiapi.PathElem{e}
+	}
 	path := &gnmiapi.Path{
 		Origin: "",
-		//Elem:   es,
+		Elem:   es,
 		Target: p.target,
 	}
 	tv := &gnmiapi.TypedValue{
@@ -86,16 +88,8 @@ func (p *GNMIPusher) PushUpdate() error {
 		Duplicates: 0,
 	}
 	uds := []*gnmiapi.Update{ud}
-	//var protoBuilder strings.Builder
-	//protoBuilder.WriteString("update:{path:{elem:{name:\"" + p.endpoint + "\"}")
-	//protoBuilder.WriteString("  target:\"" + p.target + "\"}")
-	//protoBuilder.WriteString("val:{string_val:\"" + p.payload + "\"}}")
-	//protoString := protoBuilder.String()
 
 	setGnmiRequest.Replace = uds
-	//if err := proto.UnmarshalText(protoString, setGnmiRequest); err != nil {
-	//	return err
-	//}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

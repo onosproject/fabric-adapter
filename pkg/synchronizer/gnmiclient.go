@@ -113,7 +113,7 @@ func (c *client) Capabilities(ctx context.Context, req *gpb.CapabilityRequest) (
 // Get calls gnmi Get RPC
 func (c *client) Get(ctx context.Context, req *gpb.GetRequest) (*gpb.GetResponse, error) {
 	getResponse, err := c.client.Get(ctx, req)
-	_ = c.client.Close()
+	defer c.client.Close()
 	return getResponse, errors.FromGRPC(err)
 }
 
@@ -122,10 +122,10 @@ func (c *client) Set(ctx context.Context, req *gpb.SetRequest) (*gpb.SetResponse
 	log.Warn("client.Set()")
 
 	c.client = c.getGNMIClient(ctx)
-	log.Warnf("Sending set request %v", req)
+	defer c.client.Close()
+	log.Infof("Sending set request %v", req)
 	setResponse, err := c.client.Set(ctx, req)
-	_ = c.client.Close()
-	log.Warnf("gnmi set operation finished, result is %v", setResponse)
+	log.Infof("gnmi set operation finished, result is %v", setResponse)
 	return setResponse, errors.FromGRPC(err)
 }
 

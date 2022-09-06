@@ -50,9 +50,8 @@ func getClientCredentials(useSecure bool) (*tls.Config, error) {
 			Certificates:       []tls.Certificate{cert},
 			InsecureSkipVerify: true,
 		}, nil
-	} else {
-		return nil, nil
 	}
+	return nil, nil
 }
 
 func (c *client) getDestination(useSecure bool) (baseClient.Destination, error) {

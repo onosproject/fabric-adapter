@@ -44,7 +44,7 @@ func TestGNMIPush(t *testing.T) {
 	tc := &testClient{expectedStatus: http.StatusOK}
 	pusher := NewGNMIPusherWithClient("someURL", "stratum", "somepayload", "path", tc)
 	assert.NoError(t, pusher.PushUpdate())
-	assert.Contains(t, tc.payload, "val:{string_val:\"somepayload\"")
+	assert.Contains(t, tc.payload, "val:{bytes_val:\"somepayload\"")
 }
 
 // TestGNMIPusherError tests that a POST operation that the pusher properly handles an HTTP error on the POST operation

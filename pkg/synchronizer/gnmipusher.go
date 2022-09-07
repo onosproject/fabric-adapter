@@ -9,9 +9,8 @@ package synchronizer
 
 import (
 	"context"
-	"fmt"
 	gnmiapi "github.com/openconfig/gnmi/proto/gnmi"
-	"os"
+	"time"
 )
 
 // GnmiPushClientFactory is used to create the underlying GNMI clients. Overridden by tests
@@ -66,19 +65,21 @@ func NewGNMIPusherWithClient(url string, target string, payload string, path str
 func (p *GNMIPusher) PushUpdate() error {
 	setGnmiRequest := &gnmiapi.SetRequest{}
 
-	// update:{path:{elem:{name:"someURL"} target:"stratum"} val:{string_val:"somepayload"}}
-	e := &gnmiapi.PathElem{
-		Name: p.endpoint,
+	var es []*gnmiapi.PathElem
+	if p.path != "" {
+		e := &gnmiapi.PathElem{
+			Name: p.path,
+		}
+		es = []*gnmiapi.PathElem{e}
 	}
-	es := []*gnmiapi.PathElem{e}
 	path := &gnmiapi.Path{
 		Origin: "",
 		Elem:   es,
 		Target: p.target,
 	}
 	tv := &gnmiapi.TypedValue{
-		Value: &gnmiapi.TypedValue_StringVal{
-			StringVal: p.payload,
+		Value: &gnmiapi.TypedValue_BytesVal{
+			BytesVal: []byte(p.payload),
 		},
 	}
 	ud := &gnmiapi.Update{
@@ -87,20 +88,12 @@ func (p *GNMIPusher) PushUpdate() error {
 		Duplicates: 0,
 	}
 	uds := []*gnmiapi.Update{ud}
-	//var protoBuilder strings.Builder
-	//protoBuilder.WriteString("update:{path:{elem:{name:\"" + p.endpoint + "\"}")
-	//protoBuilder.WriteString("  target:\"" + p.target + "\"}")
-	//protoBuilder.WriteString("val:{string_val:\"" + p.payload + "\"}}")
-	//protoString := protoBuilder.String()
 
-	setGnmiRequest.Update = uds
-	//if err := proto.UnmarshalText(protoString, setGnmiRequest); err != nil {
-	//	return err
-	//}
+	setGnmiRequest.Replace = uds
 
-	fmt.Fprintf(os.Stderr, "proto for setGnmiRequest is: %v", setGnmiRequest)
-
-	_, err := p.pushClient.Set(context.Background(), setGnmiRequest)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := p.pushClient.Set(ctx, setGnmiRequest)
 	if err != nil {
 		return &PushError{
 			Endpoint:   p.endpoint,
